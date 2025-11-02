@@ -53,7 +53,7 @@ CREATE POLICY "Admin pode gerenciar configuracoes"
   USING (
     EXISTS (
       SELECT 1 FROM user_roles ur
-      WHERE ur."userId" = auth.uid()::text
+      WHERE ur.user_id = auth.uid()::text
       AND ur.role = 'ADMIN'
     )
   );
