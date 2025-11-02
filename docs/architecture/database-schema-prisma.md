@@ -65,9 +65,13 @@ model PessoaFisica {
 }
 
 enum AfiliadoStatus {
-  PENDENTE
-  APROVADO
-  REJEITADO
+  PENDENTE          // Aguardando processamento automático
+  ENVIADO           // Aprovado e email enviado
+  JA_CADASTRADO     // Email já existe
+  SEM_PADRINHO      // Padrinho não encontrado
+  SEM_CONVITE       // Padrinho sem convites disponíveis
+  APROVADO          // (Deprecated - usar ENVIADO)
+  REJEITADO         // (Deprecated - usar JA_CADASTRADO, SEM_PADRINHO ou SEM_CONVITE)
 }
 
 model Afiliado {
@@ -79,7 +83,7 @@ model Afiliado {
   dataCadastro    DateTime        @default(now()) @map("data_cadastro")
   dataAprovacao   DateTime?       @map("data_aprovacao")
   emailEnviado    Boolean         @default(false) @map("email_enviado")
-  codigoConviteId String?         @map("codigo_convite_id")
+  codigoConviteId String?         @unique @map("codigo_convite_id")
 
   // Relations
   afiliado      PessoaFisica   @relation("Afiliado", fields: [afiliadoId], references: [id], onDelete: Cascade)
@@ -109,75 +113,72 @@ model CodigoConvite {
   @@map("codigos_convite")
 }
 
-enum TipoPagamento {
-  MENSAL
-  ANUAL
+// ==========================================
+// EMAIL AUTOMATION SYSTEM
+// ==========================================
+
+model EmailTemplate {
+  id              String   @id @default(uuid())
+  nome            String
+  codigo          String   @unique @db.VarChar(100)
+  assunto         String   @db.Text
+  corpo           String   @db.Text
+  variaveis       Json     @default("[]")
+  remetentNome    String?  @map("remetente_nome")
+  remetenteEmail  String?  @map("remetente_email")
+  ativo           Boolean  @default(true)
+  criadoEm        DateTime @default(now()) @map("criado_em")
+  atualizadoEm    DateTime @updatedAt @map("atualizado_em")
+
+  @@index([codigo])
+  @@index([ativo])
+  @@map("email_templates")
 }
 
-enum StatusPagamento {
+model ConfiguracaoEmail {
+  id           String   @id @default(uuid())
+  chave        String   @unique @db.VarChar(100)
+  valor        String   @db.Text
+  tipo         String   @default("string") @db.VarChar(50)
+  descricao    String?  @db.Text
+  grupo        String   @default("geral") @db.VarChar(100)
+  criptografado Boolean @default(false)
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@index([chave])
+  @@index([grupo])
+  @@map("configuracoes_email")
+}
+
+enum StatusEmail {
   PENDENTE
-  CONFIRMADO
-  REJEITADO
+  ENVIADO
+  FALHA
 }
 
-model Pagamento {
-  id              String          @id @default(uuid())
-  email           String
-  valor           Decimal         @db.Decimal(10, 2)
-  dataPagamento   DateTime        @map("data_pagamento")
-  tipoPagamento   TipoPagamento   @map("tipo_pagamento")
-  status          StatusPagamento @default(PENDENTE)
-  comprovante     String?         @db.Text
-  observacoes     String?         @db.Text
-  confirmedBy     String?         @map("confirmed_by") // User ID
-  createdAt       DateTime        @default(now()) @map("created_at")
+model LogEmail {
+  id                 String      @id @default(uuid())
+  templateCodigo     String?     @map("template_codigo") @db.VarChar(100)
+  destinatarioEmail  String      @map("destinatario_email")
+  destinatarioNome   String?     @map("destinatario_nome")
+  assunto            String      @db.Text
+  corpo              String      @db.Text
+  variaveis          Json?
+  status             StatusEmail @default(PENDENTE)
+  erro               String?     @db.Text
+  tentativas         Int         @default(0)
+  afiliadoId         String?     @map("afiliado_id")
+  padrinhoId         String?     @map("padrinho_id")
+  enviadoEm          DateTime?   @map("enviado_em")
+  criadoEm           DateTime    @default(now()) @map("criado_em")
 
-  @@index([email])
   @@index([status])
-  @@index([dataPagamento])
-  @@map("pagamentos")
-}
-
-// ==========================================
-// EMAIL PROCESSING (read-only from n8n)
-// ==========================================
-
-model Email {
-  messageId     String             @id @map("message_id")
-  threadId      String?            @map("thread_id")
-  from          String
-  to            String
-  subject       String
-  bodyText      String?            @map("body_text") @db.Text
-  bodyHtml      String?            @map("body_html") @db.Text
-  dateReceived  DateTime           @map("date_received")
-  labels        String[]
-  processedAt   DateTime           @default(now()) @map("processed_at")
-
-  // Relations
-  attachments EmailAttachment[]
-
-  @@index([from])
-  @@index([dateReceived])
-  @@map("emails")
-}
-
-model EmailAttachment {
-  id          String   @id @default(uuid())
-  messageId   String   @map("message_id")
-  filename    String
-  mimeType    String   @map("mime_type")
-  size        Int
-  storagePath String   @map("storage_path")
-  storageUrl  String   @map("storage_url") @db.Text
-  valor       Decimal? @db.Decimal(10, 2)
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  // Relations
-  email Email @relation(fields: [messageId], references: [messageId], onDelete: Cascade)
-
-  @@index([messageId])
-  @@map("email_attachments")
+  @@index([templateCodigo])
+  @@index([destinatarioEmail])
+  @@index([afiliadoId])
+  @@index([criadoEm])
+  @@map("log_emails")
 }
 
 // ==========================================
@@ -188,7 +189,6 @@ enum TipoNotificacao {
   AFILIADO_APROVADO
   AFILIADO_CADASTRADO
   CONVITES_ESGOTADOS
-  PAGAMENTO_CONFIRMADO
   CODIGO_EXPIRANDO
 }
 
@@ -225,44 +225,38 @@ model AuditLog {
 }
 ```
 
-## Migration Strategy from nm81
+## Email Automation System
 
-**Current Supabase Tables → Prisma Migration:**
+The schema includes tables for managing email templates and tracking sent emails:
 
-1. **Preserve existing data**:
-   - `pessoas_fisicas` - Keep structure, add indexes
-   - `afiliados` - Normalize status values to enum
-   - `codigos_convite` - Add `usado` boolean
-   - `pagamentos` - Add `tipoPagamento` enum, `status` enum
-   - `emails` + `email_attachments` - Keep as-is (written by n8n)
+- **`email_templates`** - Reusable email templates with variables
+- **`configuracoes_email`** - Email service configuration settings
+- **`log_emails`** - Audit log of all emails sent by the system
 
-2. **New tables** (create via Prisma migration):
-   - `user_roles` - Map Supabase Auth users to roles
-   - `notifications` - In-app notification system
-   - `audit_logs` - Security audit trail
+## Migration Strategy
 
-3. **Migration Steps**:
-   ```bash
-   # 1. Initialize Prisma with existing DB
-   npx prisma db pull
+**Migration Steps**:
+```bash
+# 1. Initialize Prisma with existing DB
+npx prisma db pull
 
-   # 2. Review generated schema, refine manually
+# 2. Review generated schema, refine manually
 
-   # 3. Create migration for new tables + indexes
-   npx prisma migrate dev --name add_auth_and_audit
+# 3. Create migration for new tables + indexes
+npx prisma migrate dev --name init
 
-   # 4. Seed initial data (admin user role, etc.)
-   npx prisma db seed
+# 4. Seed initial data (admin user role, templates, etc.)
+npx prisma db seed
 
-   # 5. Deploy to production
-   npx prisma migrate deploy
-   ```
+# 5. Deploy to production
+npx prisma migrate deploy
+```
 
-4. **Data Backfill**:
-   - Script to create `UserRole` entries for existing users
-   - Normalize `afiliados.status` strings to enums
-   - Calculate `tipoPagamento` based on `valor`
+**Data Backfill**:
+- Script to create `UserRole` entries for existing users
+- Normalize `afiliados.status` strings to enums
+- Create default email templates
 
-5. **RLS Policies** (Supabase Dashboard):
-   - Apply Row Level Security policies (see Security section)
-   - Test with different user roles
+**RLS Policies** (Supabase Dashboard):
+- Apply Row Level Security policies (see Security section)
+- Test with different user roles
