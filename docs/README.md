@@ -37,13 +37,10 @@
   - [Resumo Executivo](arquitetura/RESUMO-EXECUTIVO.md)
 
 ### ⏭️ Fase 3 (Futuro)
-- [ ] RF-006: Gestão de Pagamentos
-- [ ] RF-007: Relatórios e Analytics
+- [ ] RF-006: Relatórios e Analytics
+- [ ] RF-007: Sistema de Notificações
 
 ### ⏭️ Fase 4 (Futuro)
-- [ ] RF-009: Sistema de Notificações
-
-### ⏭️ Fase 5 (Futuro)
 - [ ] RF-008: Portal do Padrinho
 
 ---
@@ -142,6 +139,18 @@ Criada análise completa da implementação dos fluxos críticos:
 ### Monitoramento (Futuro)
 - **Pino Logger:** https://getpino.io/
 - **n8n Webhooks:** https://n8n.inema.vip/
+
+---
+
+## 📸 Screenshots do Sistema
+
+Veja exemplos visuais da interface:
+
+![Tela do Sistema](../telas/photo_4918103494183553796_x.jpg)
+
+![Dashboard](../telas/photo_4915851694369868596_w.jpg)
+
+*Screenshots demonstrando a interface do sistema de gestão de convites e afiliados.*
 
 ---
 
