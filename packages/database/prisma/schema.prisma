@@ -64,10 +64,11 @@ model PessoaFisica {
 enum AfiliadoStatus {
   PENDENTE          // Aguardando processamento automático
   ENVIADO           // Aprovado e email enviado
-  JA_CADASTRADO     // Email já existe ou padrinho sem convites
+  JA_CADASTRADO     // Email já existe
   SEM_PADRINHO      // Padrinho não encontrado
+  SEM_CONVITE       // Padrinho sem convites disponíveis
   APROVADO          // (Deprecated - usar ENVIADO)
-  REJEITADO         // (Deprecated - usar JA_CADASTRADO ou SEM_PADRINHO)
+  REJEITADO         // (Deprecated - usar JA_CADASTRADO, SEM_PADRINHO ou SEM_CONVITE)
 }
 
 model Afiliado {

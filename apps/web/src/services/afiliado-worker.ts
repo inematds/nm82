@@ -12,7 +12,7 @@ import { enviarEmailPorTemplate, buscarConfiguracao } from './template-email-ser
 
 interface ResultadoProcessamento {
   afiliadoId: string;
-  status: 'ENVIADO' | 'JA_CADASTRADO' | 'SEM_PADRINHO';
+  status: 'ENVIADO' | 'JA_CADASTRADO' | 'SEM_PADRINHO' | 'SEM_CONVITE';
   mensagem: string;
   emailsEnviados: number;
 }
@@ -193,14 +193,14 @@ async function processarSemConvites(afiliado: any): Promise<ResultadoProcessamen
   await prisma.afiliado.update({
     where: { id: afiliado.id },
     data: {
-      status: 'JA_CADASTRADO',
+      status: 'SEM_CONVITE',
       emailEnviado: true,
     },
   });
 
   return {
     afiliadoId: afiliado.id,
-    status: 'JA_CADASTRADO',
+    status: 'SEM_CONVITE',
     mensagem: 'Padrinho sem convites',
     emailsEnviados: 2,
   };

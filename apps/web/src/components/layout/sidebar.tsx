@@ -37,6 +37,8 @@ const navItems: NavItem[] = [
     icon: Settings,
     children: [
       { title: 'Usuários', href: '/admin/usuarios', icon: UserCog },
+      { title: 'Templates de Email', href: '/admin/templates-email', icon: Mail },
+      { title: 'Configurações Email', href: '/admin/configuracoes-email', icon: Settings },
       { title: 'Anonimização', href: '/admin', icon: Settings },
       { title: 'Página de Convite', href: '/convite', icon: Mail },
     ],
