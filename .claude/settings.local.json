@@ -50,7 +50,16 @@
       "Bash(git push:*)",
       "Bash(cat:*)",
       "Bash(packages/database/prisma/migrations/EXECUTAR-TUDO.sql)",
-      "Bash(if exist .next rmdir /s /q .next)"
+      "Bash(if exist .next rmdir /s /q .next)",
+      "Bash(timeout 10 bash:*)",
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\")",
+      "Bash(timeout 15 bash:*)",
+      "Bash(if exist appsweb.next rmdir /s /q appsweb.next)",
+      "Bash(powershell -Command:*)",
+      "Bash(test:*)",
+      "Bash(echo:*)",
+      "Bash(timeout 20 bash:*)",
+      "Bash(psql:*)"
     ],
     "deny": [],
     "ask": []
