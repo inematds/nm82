@@ -1,0 +1,684 @@
+{
+  "name": "nm81 - 1 - VIP Gmail Supabase Anexos LABEL",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1,
+        "simple": false,
+        "filters": {
+          "includeSpamTrash": false,
+          "labelIds": [
+            "INBOX"
+          ],
+          "q": "filename:pdf OR filename:jpg OR filename:png -label:EmailProcessado"
+        },
+        "options": {}
+      },
+      "id": "ed2a88fd-c436-4d07-b8be-45fc1c8a61bb",
+      "name": "Gmail - Buscar Não Processados",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        -1296,
+        192
+      ],
+      "webhookId": "d3ea5db6-0746-4377-ab8b-9f3ff5eb3654",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "SXS69CXVg1I9Rwvr",
+          "name": "Gmail account VIP"
+        }
+      },
+      "notes": "MUDANÇAS:\n1. limit: 500 (evita timeout)\n2. -label:EmailProcessado (só pega não processados)\n\nProcessa 500 por vez até acabar!"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "id",
+        "options": {}
+      },
+      "id": "db911505-b963-4496-a61f-0e876e98574c",
+      "name": "Split Out",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -1072,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{$json.id}}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "d16d86e4-9814-4c2c-93c6-0ec2b02b4076",
+      "name": "Gmail - Ler Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        -848,
+        192
+      ],
+      "webhookId": "c52fa549-724f-4ea0-a428-c47f09f1873b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "SXS69CXVg1I9Rwvr",
+          "name": "Gmail account VIP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 0.5
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -624,
+        192
+      ],
+      "id": "f7fa2fc6-9008-4b48-ab57-cc9c5c5ce052",
+      "name": "Wait (Rate Limit)",
+      "webhookId": "0d6a9c9f-e817-4e37-bd86-49543f729eba",
+      "notes": "0.5s delay = seguro\nSe não tiver erro 429, pode remover"
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = [];\n\nfor (const item of $input.all()) {\n  const msg = item.json;\n\n  console.log('Processing email ID:', msg.id);\n\n  const getHeader = (name) => {\n    let headers = [];\n    if (msg.payload && msg.payload.headers) {\n      headers = msg.payload.headers;\n    } else if (msg.headers) {\n      headers = msg.headers;\n    }\n    if (!Array.isArray(headers)) return '';\n    const h = headers.find(h => h.name && h.name.toLowerCase() === name.toLowerCase());\n    return h ? (h.value || '') : '';\n  };\n\n  let from = msg.from || getHeader('From') || '';\n  let to = msg.to || getHeader('To') || '';\n  let subject = msg.subject || getHeader('Subject') || '';\n  let bodyText = msg.textPlain || msg.plainText || msg.text || '';\n  let bodyHtml = msg.textHtml || msg.html || '';\n\n  if (!bodyText && msg.payload) {\n    if (msg.payload.body && msg.payload.body.data) {\n      try {\n        bodyText = Buffer.from(msg.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');\n      } catch (e) {}\n    }\n    if (!bodyText && msg.payload.parts) {\n      for (const part of msg.payload.parts) {\n        if (part.mimeType === 'text/plain' && part.body && part.body.data) {\n          try {\n            bodyText = Buffer.from(part.body.data.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');\n            break;\n          } catch (e) {}\n        }\n      }\n    }\n  }\n\n  if (!bodyHtml && msg.payload && msg.payload.parts) {\n    for (const part of msg.payload.parts) {\n      if (part.mimeType === 'text/html' && part.body && part.body.data) {\n        try {\n          bodyHtml = Buffer.from(part.body.data.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');\n          break;\n        } catch (e) {}\n      }\n    }\n  }\n\n  let dateReceived = null;\n  const dateStr = msg.date || getHeader('Date') || msg.internalDate;\n  if (dateStr) {\n    try {\n      if (typeof dateStr === 'number' || /^\\d+$/.test(dateStr)) {\n        dateReceived = new Date(parseInt(dateStr)).toISOString();\n      } else {\n        dateReceived = new Date(dateStr).toISOString();\n      }\n    } catch (e) {}\n  }\n\n  let labels = msg.labelIds || msg.labels || [];\n  let attachmentsCount = 0;\n  if (Array.isArray(msg.attachments)) {\n    attachmentsCount = msg.attachments.length;\n  } else if (msg.payload && msg.payload.parts) {\n    attachmentsCount = msg.payload.parts.filter(p => p.filename && p.filename.length > 0 && !/^text\\/(plain|html)$/.test(p.mimeType)).length;\n  }\n\n  let rawHeaders = [];\n  if (msg.payload && msg.payload.headers) {\n    rawHeaders = msg.payload.headers;\n  } else if (msg.headers) {\n    rawHeaders = msg.headers;\n  }\n\n  console.log('Extraídos:', { from: from || 'VAZIO', to: to || 'VAZIO', subject: subject || 'VAZIO', bodyText: bodyText ? 'OK' : 'VAZIO', date: dateReceived || 'VAZIO' });\n\n  output.push({\n    json: {\n      message_id: msg.id || '',\n      thread_id: msg.threadId || null,\n      from: from,\n      to: to,\n      subject: subject,\n      snippet: msg.snippet || '',\n      body_text: bodyText,\n      body_html: bodyHtml,\n      date_received: dateReceived,\n      labels: labels,\n      attachments_count: attachmentsCount,\n      raw_headers: rawHeaders\n    }\n  });\n}\n\nreturn output;"
+      },
+      "id": "ec56b892-171d-443b-a67e-34afe1cf456e",
+      "name": "Process Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -368,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => { const bins = item.binary || {}; let count = 0; for (const [k,b] of Object.entries(bins)) { const mt = (b.mimeType||'').toLowerCase(); if (!/^text\\/(plain|html)$/.test(mt)) count++; } return { json: { ...item.json, hasAttachments: count > 0, message_id: item.json.id || item.json.message_id }, binary: item.binary }; });"
+      },
+      "id": "3c59635a-3c8c-4fbb-84b0-9ffc87f090f8",
+      "name": "Analyze Attachments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "emails",
+        "dataToSend": "autoMapInputData"
+      },
+      "id": "572e60d3-8084-4448-b40c-6b0a3cce54d9",
+      "name": "Supabase Upsert Email",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        224,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "m2NeTLsw3SoLf2IP",
+          "name": "Supabase FTD Email Base"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.hasAttachments}}",
+              "value2": "={{true}}"
+            }
+          ]
+        }
+      },
+      "id": "af774bca-4de9-4fa2-917e-04a4efad026c",
+      "name": "Has Attachments?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -176,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\n\nfor (const item of $input.all()) {\n  const messageId = item.json.id || item.json.message_id;\n  const bins = item.binary || {};\n  const timestamp = Date.now(); // gera número único baseado no tempo atual\n\n  let idx = 0;\n  for (const [key, bin] of Object.entries(bins)) {\n    const mt = (bin.mimeType || 'application/octet-stream').toLowerCase();\n    if (/^text\\/(plain|html)$/.test(mt)) continue;\n\n    const raw = bin.fileName || key || 'attachment';\n    const filename = raw.replace(/[^\\w.\\-]+/g, '_').slice(0, 255);\n\n    // Nome único baseado no tempo + índice\n    const uniqueFilename = `${timestamp}_${idx}_${filename}`;\n    const storagePath = `emails/${messageId}/${uniqueFilename}`;\n\n    out.push({\n      json: {\n        message_id: messageId,\n        filename: uniqueFilename,\n        mime_type: bin.mimeType || 'application/octet-stream',\n        size: bin.fileSize || 0,\n        storage_path: storagePath\n      },\n      binary: {\n        data: bin\n      }\n    });\n\n    idx++;\n  }\n}\n\nreturn out;\n"
+      },
+      "id": "0514a612-070c-4208-a180-e127ee9deb42",
+      "name": "Prepare Attachments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://lcmaaossplssflfrrank.supabase.co/storage/v1/object/email-attachments/{{$json.storage_path}}?upsert=true",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "id": "6e0d9b35-d2f4-4db5-ae4c-5d259890e9e6",
+      "name": "Upload to Supabase Storage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        272,
+        192
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "mLnzdQmw1XeTRgFX",
+          "name": "Supabase inemaFTD Servico API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nconst supabaseUrl = 'https://lcmaaossplssflfrrank.supabase.co';\n\n// pega todos os itens vindos do nó anterior\nconst prepItems = $items(\"Prepare Attachments\");\n\nfor (const item of prepItems) {\n  const prepData = item.json;\n\n  // URL pública de acesso ao arquivo (ajuste o nome do bucket se mudar)\n  const storageUrl = `${supabaseUrl}/storage/v1/object/public/email-attachments/${prepData.storage_path}`;\n\n  out.push({\n    json: {\n      message_id: prepData.message_id || null,\n      filename: prepData.filename,\n      mime_type: prepData.mime_type,\n      size: parseInt(prepData.size) || Math.round(parseFloat(prepData.size) * 1024) || 0,\n      storage_path: prepData.storage_path,\n      storage_url: storageUrl\n    }\n  });\n}\n\nreturn out;\n"
+      },
+      "id": "e56c31f5-a8b1-4ef5-9f55-5663d5477de7",
+      "name": "Prepare Metadata for DB",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        496,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "email_attachments",
+        "dataToSend": "autoMapInputData"
+      },
+      "id": "29d54e72-0f87-4212-b0ba-70f753ecde9b",
+      "name": "Supabase Upsert Attachment Row",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        720,
+        192
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "m2NeTLsw3SoLf2IP",
+          "name": "Supabase FTD Email Base"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "message_id",
+              "value": "={{$json.message_id}}"
+            }
+          ]
+        },
+        "options": {
+          "dotNotation": true
+        }
+      },
+      "id": "e7394691-760a-4627-816b-9fb9ba3aee39",
+      "name": "Attachment Done",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        944,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "message_id",
+              "value": "={{$item(0).$node['Gmail - Ler Email'].json.id}}"
+            }
+          ]
+        },
+        "options": {
+          "dotNotation": true
+        }
+      },
+      "id": "cc5bc15a-d572-414f-9073-10c34071666a",
+      "name": "No Attachments Placeholder",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        944,
+        384
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "9f51d28e-c8f8-4467-be14-4683488d5dc6",
+      "name": "Merge (Wait Email + Attachments)",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail - Ler Email').item.json.id }}",
+        "labelIds": [
+          "Label_5943064257471381229"
+        ]
+      },
+      "id": "7862f28a-34e1-4037-9b03-d40273fbf360",
+      "name": "✅ Marcar como Processado",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        192
+      ],
+      "webhookId": "a042ea00-a6a3-4d92-8280-f8fb0fa22ad7",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "SXS69CXVg1I9Rwvr",
+          "name": "Gmail account VIP"
+        }
+      },
+      "notes": "IMPORTANTE:\n1. Crie a label 'EmailProcessado' no Gmail primeiro\n2. Este nó marca o email como processado\n3. Próxima execução não pega este email novamente\n\nQuando não achar mais emails = TERMINOU!"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "7e0fee61-f555-4d08-96ac-731597ec2eee",
+      "name": "Schedule Trigger (3h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1520,
+        192
+      ],
+      "retryOnFail": false,
+      "notes": "Roda a cada 3 horas\n500 emails × 8 exec/dia = 4000 emails/dia\n\nPode ajustar:\n- 6h = mais lento\n- 1h = mais rápido (cuidado com rate limit)"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "emails",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "message_id",
+              "keyValue": "={{ $json.message_id }}"
+            }
+          ]
+        }
+      },
+      "id": "5857e90b-b00f-470a-bc89-22658e31b95c",
+      "name": "Buscar Emails Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        -432
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "mLnzdQmw1XeTRgFX",
+          "name": "Supabase inemaFTD Servico API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "messageLabel",
+        "messageId": "={{ $json.message_id }}",
+        "labelIds": [
+          "Label_5943064257471381229"
+        ]
+      },
+      "id": "a0d6fae8-3614-405d-8912-04f1788cfb63",
+      "name": "Atualizar Label no Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        320,
+        -512
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "SXS69CXVg1I9Rwvr",
+          "name": "Gmail account VIP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f9e281ba-cb3d-471c-bf20-3a05fb44f9f8",
+              "leftValue": "={{ $json.message_id }}",
+              "rightValue": "={{ $('Process Email').item.json.message_id }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        48,
+        -416
+      ],
+      "id": "15fc5fca-7a89-425d-8981-5e7122c45ebb",
+      "name": "If",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e7a8c47d-4d3c-42c7-8c6b-78fc9c95fc6a",
+              "name": "message_id",
+              "value": "={{ $('Process Email').item.json.message_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        320,
+        -336
+      ],
+      "id": "a1794c14-c95c-4725-a9a5-3a55222fd621",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail - Buscar Não Processados": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Ler Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Ler Email": {
+      "main": [
+        [
+          {
+            "node": "Wait (Rate Limit)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (Rate Limit)": {
+      "main": [
+        [
+          {
+            "node": "Process Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Analyze Attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Email": {
+      "main": [
+        [
+          {
+            "node": "Supabase Upsert Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Attachments": {
+      "main": [
+        [
+          {
+            "node": "Has Attachments?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Upsert Email": {
+      "main": [
+        [
+          {
+            "node": "Merge (Wait Email + Attachments)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Attachments?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Attachments",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Attachments Placeholder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Attachments": {
+      "main": [
+        [
+          {
+            "node": "Upload to Supabase Storage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to Supabase Storage": {
+      "main": [
+        [
+          {
+            "node": "Prepare Metadata for DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Metadata for DB": {
+      "main": [
+        [
+          {
+            "node": "Supabase Upsert Attachment Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Upsert Attachment Row": {
+      "main": [
+        [
+          {
+            "node": "Attachment Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attachment Done": {
+      "main": [
+        [
+          {
+            "node": "Merge (Wait Email + Attachments)",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "No Attachments Placeholder": {
+      "main": [
+        [
+          {
+            "node": "Merge (Wait Email + Attachments)",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge (Wait Email + Attachments)": {
+      "main": [
+        [
+          {
+            "node": "✅ Marcar como Processado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger (3h)": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Buscar Não Processados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Emails Supabase": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Atualizar Label no Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Supabase Upsert Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a67547a1-f8c3-414b-93d4-6491f0c260d9",
+  "meta": {
+    "instanceId": "099f1e1befc36cb37426544d3db2ed3a697cbeabeec5e3f29e2e2beeccc011e0"
+  },
+  "id": "SHCRKve68CbkB67k",
+  "tags": []
+}

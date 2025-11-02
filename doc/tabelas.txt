@@ -1,0 +1,101 @@
+| table_schema | table_name               | column_name            | data_type                   | is_nullable | column_default    |
+| ------------ | ------------------------ | ---------------------- | --------------------------- | ----------- | ----------------- |
+| public       | afiliados                | id                     | uuid                        | NO          | gen_random_uuid() |
+| public       | afiliados                | afiliado_id            | uuid                        | YES         | null              |
+| public       | afiliados                | padrinho_id            | uuid                        | YES         | null              |
+| public       | afiliados                | data_cadastro          | timestamp without time zone | YES         | now()             |
+| public       | afiliados                | email_enviado          | boolean                     | YES         | false             |
+| public       | afiliados                | data_email             | timestamp without time zone | YES         | null              |
+| public       | afiliados                | status                 | text                        | YES         | 'pendente'::text  |
+| public       | afiliados                | nome                   | text                        | YES         | null              |
+| public       | afiliados                | email                  | text                        | YES         | null              |
+| public       | afiliados                | cpf                    | text                        | YES         | null              |
+| public       | afiliados                | data_nascimento        | date                        | YES         | null              |
+| public       | afiliados                | sexo                   | text                        | YES         | null              |
+| public       | afiliados                | cidade                 | text                        | YES         | null              |
+| public       | afiliados                | uf                     | text                        | YES         | null              |
+| public       | afiliados                | nicho_atuacao          | text                        | YES         | null              |
+| public       | afiliados                | telefone               | text                        | YES         | null              |
+| public       | cartoes                  | id                     | text                        | NO          | null              |
+| public       | cartoes                  | Email                  | text                        | YES         | null              |
+| public       | cartoes                  | Name                   | text                        | YES         | null              |
+| public       | cartoes                  | Created (UTC)          | text                        | YES         | null              |
+| public       | cartoes                  | Status                 | text                        | YES         | null              |
+| public       | cartoes                  | Total Spend            | double precision            | YES         | null              |
+| public       | cartoes                  | Payment Count          | bigint                      | YES         | null              |
+| public       | codigos_convite          | id                     | uuid                        | NO          | gen_random_uuid() |
+| public       | codigos_convite          | codigo                 | text                        | NO          | null              |
+| public       | codigos_convite          | email                  | text                        | YES         | null              |
+| public       | codigos_convite          | data                   | timestamp with time zone    | YES         | null              |
+| public       | codigos_convite          | atualizado_em          | timestamp with time zone    | YES         | null              |
+| public       | email_attachments        | id                     | uuid                        | NO          | gen_random_uuid() |
+| public       | email_attachments        | message_id             | text                        | NO          | null              |
+| public       | email_attachments        | filename               | text                        | NO          | null              |
+| public       | email_attachments        | mime_type              | text                        | YES         | null              |
+| public       | email_attachments        | size                   | integer                     | YES         | null              |
+| public       | email_attachments        | storage_path           | text                        | NO          | null              |
+| public       | email_attachments        | created_at             | timestamp with time zone    | NO          | now()             |
+| public       | email_attachments        | storage_url            | text                        | YES         | null              |
+| public       | email_attachments        | valor                  | numeric                     | YES         | null              |
+| public       | emails                   | message_id             | text                        | NO          | null              |
+| public       | emails                   | from                   | text                        | YES         | null              |
+| public       | emails                   | to                     | text                        | YES         | null              |
+| public       | emails                   | subject                | text                        | YES         | null              |
+| public       | emails                   | body_text              | text                        | YES         | null              |
+| public       | emails                   | date_received          | timestamp with time zone    | YES         | null              |
+| public       | emails                   | attachments_count      | integer                     | YES         | null              |
+| public       | emails                   | created_at             | timestamp with time zone    | NO          | now()             |
+| public       | emails                   | email                  | text                        | YES         | null              |
+| public       | padrinhos                | id                     | uuid                        | NO          | gen_random_uuid() |
+| public       | padrinhos                | pessoa_id              | uuid                        | YES         | null              |
+| public       | padrinhos                | convites_disponiveis   | integer                     | YES         | 5                 |
+| public       | padrinhos                | convites_usados        | integer                     | YES         | 0                 |
+| public       | padrinhos                | link_convite           | text                        | YES         | null              |
+| public       | padrinhos                | ativo                  | boolean                     | YES         | true              |
+| public       | padrinhos                | ultimo_envio           | timestamp without time zone | YES         | null              |
+| public       | padrinhos                | total_notificados      | integer                     | YES         | 0                 |
+| public       | padrinhos                | criado_em              | timestamp without time zone | YES         | now()             |
+| public       | padrinhos                | atualizado_em          | timestamp without time zone | YES         | now()             |
+| public       | pagamentos               | id                     | uuid                        | NO          | gen_random_uuid() |
+| public       | pagamentos               | pessoa_id              | uuid                        | YES         | null              |
+| public       | pagamentos               | data_pagamento         | date                        | NO          | null              |
+| public       | pagamentos               | valor                  | numeric                     | NO          | null              |
+| public       | pagamentos               | tipo_assinatura        | text                        | YES         | null              |
+| public       | pagamentos               | tipo_pagamento         | text                        | YES         | null              |
+| public       | pagamentos               | data_vencimento        | date                        | YES         | null              |
+| public       | pagamentos               | arquivo_comprovante    | text                        | YES         | null              |
+| public       | pagamentos               | origem_anexo_id        | uuid                        | YES         | null              |
+| public       | pagamentos               | criado_em              | timestamp with time zone    | YES         | now()             |
+| public       | pagamentos               | Nome                   | text                        | YES         | null              |
+| public       | pagamentos               | CPF                    | text                        | YES         | null              |
+| public       | pagamentos               | email                  | text                        | YES         | null              |
+| public       | pessoas_fisicas          | id                     | uuid                        | NO          | gen_random_uuid() |
+| public       | pessoas_fisicas          | email                  | text                        | NO          | null              |
+| public       | pessoas_fisicas          | cpf                    | text                        | YES         | null              |
+| public       | pessoas_fisicas          | nome                   | text                        | YES         | null              |
+| public       | pessoas_fisicas          | cidade                 | text                        | YES         | null              |
+| public       | pessoas_fisicas          | data_nascimento        | date                        | YES         | null              |
+| public       | pessoas_fisicas          | sexo                   | text                        | YES         | null              |
+| public       | pessoas_fisicas          | escolaridade           | text                        | YES         | null              |
+| public       | pessoas_fisicas          | data_ultimo_pagamento  | date                        | YES         | null              |
+| public       | pessoas_fisicas          | valor_ultimo_pagamento | numeric                     | YES         | null              |
+| public       | pessoas_fisicas          | tipo_assinatura        | text                        | YES         | null              |
+| public       | pessoas_fisicas          | data_vencimento        | date                        | YES         | null              |
+| public       | pessoas_fisicas          | atualizado_em          | timestamp with time zone    | YES         | now()             |
+| public       | pessoas_fisicas          | data_primeiro_contato  | timestamp with time zone    | YES         | null              |
+| public       | pessoas_fisicas          | data_cadastro          | timestamp with time zone    | YES         | now()             |
+| public       | pessoas_fisicas          | ativo                  | boolean                     | YES         | true              |
+| public       | pessoas_fisicas          | convites_enviados      | integer                     | YES         | 0                 |
+| public       | pessoas_fisicas          | convites_usados        | integer                     | YES         | 0                 |
+| public       | pessoas_fisicas          | data_ultimo_envio      | timestamp without time zone | YES         | null              |
+| public       | pessoas_fisicas          | convites_dtatual       | timestamp without time zone | YES         | now()             |
+| public       | pessoas_fisicas          | cartao                 | boolean                     | YES         | false             |
+| public       | vw_emails_anexos_pessoas | attachment_id          | uuid                        | YES         | null              |
+| public       | vw_emails_anexos_pessoas | valor                  | numeric                     | YES         | null              |
+| public       | vw_emails_anexos_pessoas | email                  | text                        | YES         | null              |
+| public       | vw_emails_anexos_pessoas | subject                | text                        | YES         | null              |
+| public       | vw_emails_anexos_pessoas | filename               | text                        | YES         | null              |
+| public       | vw_emails_anexos_pessoas | mime_type              | text                        | YES         | null              |
+| public       | vw_emails_anexos_pessoas | size                   | integer                     | YES         | null              |
+| public       | vw_emails_anexos_pessoas | created_at             | timestamp with time zone    | YES         | null              |
+| public       | vw_emails_anexos_pessoas | storage_url            | text                        | YES         | null              |

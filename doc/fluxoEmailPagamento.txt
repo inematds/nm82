@@ -1,0 +1,166 @@
+Excelente, Nei 👌 —
+aqui vai um **resumo técnico e lógico completo** do que já fizemos e **como as relações do seu sistema Supabase estão estruturadas**.
+Ele consolida toda a arquitetura que você construiu até aqui: desde a ingestão de e-mails até o relacionamento entre pessoas, pagamentos e convites.
+
+---
+
+# 🧭 VISÃO GERAL DO SISTEMA
+
+Você criou uma **base de dados relacional no Supabase/PostgreSQL** para gerenciar toda a automação da sua comunidade (INEMA/FTD).
+Essa base recebe dados de e-mails, extrai anexos, registra pessoas, controla pagamentos e convites — tudo automatizado via **n8n + Supabase + Gmail**.
+
+---
+
+## 📦 TABELAS PRINCIPAIS
+
+### **1. `emails`**
+
+> 📥 Armazena e-mails recebidos (via API do Gmail ou ingestão automatizada)
+
+| Campo                                                        | Descrição                           |
+| ------------------------------------------------------------ | ----------------------------------- |
+| `message_id`                                                 | ID único do e-mail (chave primária) |
+| `from`, `to`, `subject`, `snippet`, `body_text`, `body_html` | Dados do conteúdo                   |
+| `date_received`                                              | Data de recebimento                 |
+| `attachments_count`, `raw_headers`                           | Metadados                           |
+| 🔗 **Relacionamento**: 1:N com `email_attachments`           |                                     |
+
+---
+
+### **2. `email_attachments`**
+
+> 📎 Armazena os anexos vinculados aos e-mails
+
+| Campo                                                                                                            | Descrição                |
+| ---------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| `id`                                                                                                             | UUID único do anexo      |
+| `message_id`                                                                                                     | FK → `emails.message_id` |
+| `filename`, `mime_type`, `size`, `storage_path`                                                                  | Dados do arquivo         |
+| `created_at`                                                                                                     | Data de upload           |
+| 🔗 **Relacionamento:** cada e-mail pode ter vários anexos. <br> Dele podem surgir **comprovantes de pagamento**. |                          |
+
+---
+
+### **3. `pessoas_fisicas`**
+
+> 👤 Tabela central de contatos e afiliados (padrinhos e afiliados)
+
+| Campo                                                                | Descrição                             |
+| -------------------------------------------------------------------- | ------------------------------------- |
+| `id`                                                                 | UUID (chave primária)                 |
+| `email`                                                              | Único, usado como chave de integração |
+| `nome`, `cpf`, `cidade`, `sexo`, `escolaridade`                      | Dados pessoais                        |
+| `data_primeiro_contato`, `data_cadastro`                             | Histórico de relacionamento           |
+| `data_ultimo_pagamento`, `valor_ultimo_pagamento`, `tipo_assinatura` | Dados financeiros consolidados        |
+| `convites_enviados`, `convites_usados`, `ativo`, `data_ultimo_envio` | Controle da comunidade e convites     |
+| 🔗 **Relacionamento:** 1:N com `pagamentos`                          |                                       |
+
+---
+
+### **4. `pagamentos`**
+
+> 💰 Registra cada transação financeira individual
+
+| Campo                                                                                                   | Descrição                                 |
+| ------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `id`                                                                                                    | UUID (chave primária)                     |
+| `pessoa_id`                                                                                             | FK → `pessoas_fisicas.id`                 |
+| `data_pagamento`, `valor`, `tipo_pagamento`, `tipo_assinatura`                                          | Dados financeiros                         |
+| `origem_anexo_id`                                                                                       | FK → `email_attachments.id` (comprovante) |
+| `criado_em`                                                                                             | Timestamp de inserção                     |
+| 🔗 **Relacionamentos:**<br> `pessoa_id` → `pessoas_fisicas`<br> `origem_anexo_id` → `email_attachments` |                                           |
+
+---
+
+## 🔗 RELAÇÕES ENTRE AS TABELAS
+
+```
+emails (1) ────< email_attachments (N)
+                    │
+                    ├── origem_anexo_id ───> pagamentos (N)
+                                               │
+                                               └── pessoa_id ───> pessoas_fisicas (1)
+```
+
+👉 **Fluxo natural dos dados:**
+
+1. 📩 O e-mail chega → é salvo em `emails`
+2. 📎 Seus anexos vão para `email_attachments`
+3. 💰 Se o anexo for um comprovante → cria/atualiza `pagamentos`
+4. 👤 O pagamento atualiza `pessoas_fisicas` (valor, data, tipo de assinatura)
+5. 🎯 Esses dados alimentam seus painéis e automações (convites, campanhas, relatórios)
+
+---
+
+## 🧮 CONSULTAS E ATUALIZAÇÕES FEITAS
+
+### 🔧 Estrutura e consistência
+
+* Criamos as tabelas base com **UUIDs, índices e FKs**.
+* Garantimos **Row Level Security** para uso seguro com Supabase e n8n.
+* Criamos extensões `pgcrypto` e `pg_trgm`.
+
+### 📊 Atualizações e sincronizações
+
+* Vinculamos `pagamentos.pessoa_id` com `pessoas_fisicas.id` via e-mail.
+* Atualizamos automaticamente:
+
+  * `valor_ultimo_pagamento`
+  * `data_ultimo_pagamento`
+  * `tipo_assinatura` (mensal/anual)
+* Garantimos consistência mesmo se o dado vier só com e-mail.
+
+### 🔍 Consultas criadas
+
+* Listagem de estrutura do banco (`information_schema.columns`)
+* Relatórios de assinaturas mensais/anuais
+* Listagem de pessoas com seus últimos pagamentos
+* Checagem de vínculos e FKs
+
+---
+
+## 🧠 LÓGICA DE CLASSIFICAÇÃO FINANCEIRA
+
+| Condição       | Tipo de assinatura |
+| -------------- | ------------------ |
+| `valor >= 100` | `anual`            |
+| `valor < 100`  | `mensal`           |
+
+Essa lógica foi aplicada tanto na `pagamentos` quanto replicada em `pessoas_fisicas`.
+
+---
+
+## 📈 PRÓXIMO PASSO (recomendado)
+
+1. **Criar uma VIEW consolidada**, ex:
+
+   ```sql
+   create view public.vw_pessoas_pagamentos as
+   select
+     pf.id,
+     pf.nome,
+     pf.email,
+     pf.tipo_assinatura,
+     pf.data_ultimo_pagamento,
+     pf.valor_ultimo_pagamento
+   from public.pessoas_fisicas pf;
+   ```
+
+2. **Usar essa view** no painel de controle do Supabase ou no n8n para exibir os afiliados com pagamentos atualizados.
+
+3. **Adicionar triggers automáticas (opcional)** para atualizar `pessoas_fisicas` sempre que houver novo `pagamento`.
+
+---
+
+## 🧩 RESUMO VISUAL
+
+| Origem              | Destino             | Tipo         | Propósito                          |
+| ------------------- | ------------------- | ------------ | ---------------------------------- |
+| `emails`            | `email_attachments` | 1:N          | Armazena anexos                    |
+| `email_attachments` | `pagamentos`        | 1:1 opcional | Ligação de comprovantes            |
+| `pagamentos`        | `pessoas_fisicas`   | N:1          | Atualiza últimos pagamentos e tipo |
+| `pessoas_fisicas`   | (painéis e fluxos)  | —            | Base de contatos central           |
+
+---
+
+

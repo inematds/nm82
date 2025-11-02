@@ -1,0 +1,982 @@
+{
+  "name": "nm81 -2-  Analise Anexo",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.1,
+      "position": [
+        -1632,
+        1600
+      ],
+      "id": "7f95a225-0573-4d2a-b1f9-1b62e7c1729a",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "R7Gasp5O8lpYJ7Vg",
+          "name": "OpenAi account nei14"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"titulo\": \"Mensal/Anual\",\n  \"tipo\": \"cartão/PIX/outros\",\n  \"valor\": \"100,00\",\n  \"transacao\": {\n    \"data_pgto\": {\n      \"valor\": \"2025-05-20\",\n      \"formato\": \"YYYY-MM-DD\"\n    },\n    \"horario\": \"23h50\",\n    \"id_transacao\": \"E00416968202505110250y5d7pOXZMCo\"\n  },\n  \"destino\": {\n    \"nome\": \"Inema Tds LTDA\",\n    \"cpf_cnpj\": \"56.626.676/0001-31\",\n    \"instituicao\": \"Nu Pagamentos Ip\"\n\n  },\n  \"pagante\": {\n    \"nome\": \"JORGE MATZ\",\n    \"cpf_cnpj\": \"##*999.744-**\",\n    \"instituicao\": \"Banco Inter S.A.\"\n\n  }\n}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        -1504,
+        1600
+      ],
+      "id": "e1525f30-2bfc-49da-aad2-878a6d117d11",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.markdown }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Você é um assistente especialista em extração e processamento de dados de documentos, com especialização em identificar com precisão os detalhes essenciais de uma nota fiscal ou recibo de pagamento.\n"
+            },
+            {
+              "type": "HumanMessagePromptTemplate",
+              "message": "=\nVocê é um assistente especialista em leitura e extração de dados de comprovantes bancários brasileiros (pagamentos por PIX, cartão ou outros).\n\nSua tarefa é analisar o texto de um comprovante bancário fornecido (pode ser convertido de imagem, PDF ou texto plano) e retornar **apenas um JSON** com as informações detalhadas abaixo, com precisão total e sem explicações adicionais.\n\n---\n\n### INSTRUÇÕES DE EXTRAÇÃO:\n\n1. Extraia e estruture os seguintes campos obrigatórios:\n\n```json\n{\n  \"titulo\": \"Mensal/Anual\", // ou outro título relevante do pagamento, se identificado\n  \"tipo\": \"cartão/PIX/outros\", // tipo do pagamento identificado no comprovante\n  \"valor\": \"100,00\", // valor da transação, no formato com vírgula (ex: \"250,90\")\n  \"transacao\": {\n    \"data_pgto\": {\n      \"valor\": \"2025-05-20\", // formato obrigatório: \"YYYY-MM-DD\"\n      \"formato\": \"YYYY-MM-DD\"\n    },\n    \"horario\": \"23h50\", // horário no formato \"HHhMM\"\n    \"id_transacao\": \"E00416968202505110250y5d7pOXZMCo\" // código único da transação\n  },\n  \"destino\": {\n    \"nome\": \"Inema Tds LTDA\", // nome do recebedor\n    \"cpf_cnpj\": \"56.626.676/0001-31\", // CPF ou CNPJ do recebedor\n    \"instituicao\": \"Nu Pagamentos Ip\" // banco ou instituição financeira do recebedor\n  },\n  \"pagante\": {\n    \"nome\": \"JORGE MATZ\", // nome do pagador\n    \"cpf_cnpj\": \"999.744.999-99\", // CPF ou CNPJ do pagador (pode estar mascarado)\n    \"instituicao\": \"Banco Inter S.A.\" // banco ou instituição do pagador\n  }\n}\n```\n\n---\n\n### REGRAS DE FORMATAÇÃO:\n\n* O campo **valor** deve conter **vírgula como separador decimal** (ex: \"500,00\").\n* A **data de pagamento** deve estar obrigatoriamente no formato `\"YYYY-MM-DD\"`.\n* O **horário** deve ser extraído como texto no formato `\"HHhMM\"` (ex: \"15h27\").\n* O campo **tipo** deve conter exatamente o nome do meio de pagamento: `PIX`, `cartão`, `TED`, `boleto`, etc.\n* O campo **titulo** deve vir do contexto ou nome do pagamento (mensalidade, anuidade, etc.). Se não houver, use `\"-\"`.\n\n---\n\n### OUTRAS DIRETRIZES:\n\n* Se algum campo estiver ausente, preencha com `\"null\"` (como string) ou `\"--\"` onde for apropriado.\n* O campo `cpf_cnpj` pode estar mascarado parcialmente. Retorne exatamente como estiver no comprovante.\n* Não traduza, explique ou adicione texto fora do JSON.\n\n---\n\n### EXEMPLO DE SAÍDA (somente para referência):\n\n```json\n{\n  \"titulo\": \"Assinatura Pro\",\n  \"tipo\": \"PIX\",\n  \"valor\": \"100,00\",\n  \"transacao\": {\n    \"data_pgto\": {\n      \"valor\": \"2025-05-20\",\n      \"formato\": \"YYYY-MM-DD\"\n    },\n    \"horario\": \"23h50\",\n    \"id_transacao\": \"E00416968202505110250y5d7pOXZMCo\"\n  },\n  \"destino\": {\n    \"nome\": \"Inema Tds LTDA\",\n    \"cpf_cnpj\": \"56.626.676/0001-31\",\n    \"instituicao\": \"Nu Pagamentos Ip\"\n  },\n  \"pagante\": {\n    \"nome\": \"JORGE MATZ\",\n    \"cpf_cnpj\": \"##*999.744-**\",\n    \"instituicao\": \"Banco Inter S.A.\"\n  }\n}\n```\n\n\n\n"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        -1632,
+        1376
+      ],
+      "id": "f3f9e3a3-211e-4ddb-8150-d1e526ddfde8",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"data_atual\": \"{{ new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) }}\",\n  \"hora_atual\": \"{{ new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' }) }}\",\n  \"valor\": \"{{ $('Basic LLM Chain').item.json.output.valor ? parseFloat($('Basic LLM Chain').item.json.output.valor.toString().replace(',', '.')) : 0 }}\"\n}\n\n",
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -608,
+        1248
+      ],
+      "id": "46a77cb8-1048-497d-9fb3-6bf446ec8c95",
+      "name": "set",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.mime_type }}",
+              "value2": "=application/pdf"
+            }
+          ]
+        }
+      },
+      "id": "2f2a5a27-b655-4d90-af64-3bb40a5ef075",
+      "name": "Is Image?1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -2736,
+        1440
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process PDF metadata (sem binário)\nconst item = $input.item;\n\nreturn {\n  json: {\n    ...item.json,\n    message: `Processando anexo PDF: ${item.json.filename}`,\n    pdfAttachment: item.json.filename,\n    mimeType: item.json.mime_type,\n    storagePath: item.json.storage_path || null,\n    storageUrl: item.json.storage_url || null,\n  }\n};\n"
+      },
+      "id": "8623e2e6-2aa5-4f25-8598-b83cb3ac04ac",
+      "name": "Process PDF1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2528,
+        1280
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "05f2a631-4ae0-4fd2-ae88-bca4c7693d75",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -3648,
+        1952
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "=documento.pdf",
+        "options": {
+          "keepSource": "both"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -2080,
+        1280
+      ],
+      "id": "29bb1138-5f4e-44a8-b1f8-171ffd234013",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1b108f1d-6eaf-4ad0-bafa-00d00d08c831",
+              "name": "markdown",
+              "value": "={{ $json.content.parts[0].text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1856,
+        1472
+      ],
+      "id": "73a3edaf-9e95-4de2-a2d1-44e352aa223a",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1b108f1d-6eaf-4ad0-bafa-00d00d08c831",
+              "name": "markdown",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1856,
+        1280
+      ],
+      "id": "a98fbdfc-abf5-435e-b437-443617e578c1",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "chatgpt-4o-latest",
+          "mode": "list",
+          "cachedResultName": "CHATGPT-4O-LATEST"
+        },
+        "text": "transcreva o texto desta imagem",
+        "inputType": "base64",
+        "binaryPropertyName": "attachment_0",
+        "simplify": false,
+        "options": {
+          "detail": "auto"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -3648,
+        1024
+      ],
+      "id": "256a6d8b-a3af-4cda-8fd5-42a9a51132ad",
+      "name": "Analyze image",
+      "credentials": {
+        "openAiApi": {
+          "id": "R7Gasp5O8lpYJ7Vg",
+          "name": "OpenAi account nei14"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "text": "Transcreva todo o texto visível na imagem.\n",
+        "inputType": "binary",
+        "binaryPropertyName": "attachment_0",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -2080,
+        1472
+      ],
+      "id": "5c24d7f5-75f4-4ad5-bfab-640d32261c97",
+      "name": "Analyze an image",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YW4PS6kgPk6q8eUq",
+          "name": "Google Gemini(PaLM) ftd"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -3648,
+        1760
+      ],
+      "id": "1df0c10a-3df4-40fa-af13-f4a13d5bc8d8",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "useCustomSchema": true,
+        "operation": "getAll",
+        "tableId": "vw_emails_anexos_pessoas",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "valor",
+              "condition": "is",
+              "keyValue": "null"
+            },
+            {
+              "keyName": "attachment_id",
+              "condition": "neq",
+              "keyValue": "088628df-eff3-4ac8-acc0-2c5adb4df280"
+            },
+            {
+              "keyName": "attachment_id",
+              "condition": "neq",
+              "keyValue": "76985c3a-9a52-4362-9849-c134d523e746"
+            },
+            {
+              "keyName": "attachment_id",
+              "condition": "neq",
+              "keyValue": "1b224313-651b-4cc3-8db9-7b1c10324963"
+            },
+            {
+              "keyName": "attachment_id",
+              "condition": "neq",
+              "keyValue": "0503a799-ba01-4aab-9ec0-ae4273e45b23"
+            },
+            {
+              "keyName": "attachment_id",
+              "condition": "neq",
+              "keyValue": "7f3e7f73-cc8a-41d4-8619-a816ff1d5358"
+            },
+            {
+              "keyName": "attachment_id",
+              "condition": "neq",
+              "keyValue": "0b31e38a-fc3a-4440-9671-dbb01caf98d4"
+            },
+            {
+              "keyName": "attachment_id",
+              "condition": "neq",
+              "keyValue": "51286afb-716a-4231-9f29-0bc358e3b883"
+            },
+            {
+              "keyName": "attachment_id",
+              "condition": "neq",
+              "keyValue": "c773c209-1ce9-4279-971a-c322a820c6ca"
+            },
+            {
+              "keyName": "attachment_id",
+              "condition": "neq",
+              "keyValue": "5b311597-b1ff-48b7-86db-54b65d3c1319"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -3424,
+        1936
+      ],
+      "id": "fb42ad28-6e4e-42f6-b4ee-2bad9117755d",
+      "name": "Get many rows",
+      "credentials": {
+        "supabaseApi": {
+          "id": "m2NeTLsw3SoLf2IP",
+          "name": "Supabase FTD Email Base"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.storageUrl }}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          },
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "documento.pdf"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2304,
+        1280
+      ],
+      "id": "5da60a74-ed5c-4fe2-a62b-a72ab8bdb992",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "tableId": "pagamentos",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "data_pagamento",
+              "fieldValue": "={{ $('Basic LLM Chain').item.json.output.transacao.data_pgto.valor }}"
+            },
+            {
+              "fieldId": "tipo_pagamento",
+              "fieldValue": "={{ $('Basic LLM Chain').item.json.output.tipo }}"
+            },
+            {
+              "fieldId": "valor",
+              "fieldValue": "={{ $json.valor }}"
+            },
+            {
+              "fieldId": "Nome",
+              "fieldValue": "={{ $('Basic LLM Chain').item.json.output.pagante.nome }}"
+            },
+            {
+              "fieldId": "CPF",
+              "fieldValue": "={{ $('Basic LLM Chain').item.json.output.pagante.cpf_cnpj }}"
+            },
+            {
+              "fieldId": "email",
+              "fieldValue": "={{ $('Get many rows').item.json.email }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        1248
+      ],
+      "id": "e708412c-f527-43c1-a1e3-36863b5a14a3",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "m2NeTLsw3SoLf2IP",
+          "name": "Supabase FTD Email Base"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "email_attachments",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Get many rows').item.json.attachment_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "valor",
+              "fieldValue": "={{ $json.valor }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        1648
+      ],
+      "id": "5346e221-d9fd-4aa1-8b5e-145b657427b9",
+      "name": "Update a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "m2NeTLsw3SoLf2IP",
+          "name": "Supabase FTD Email Base"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -3200,
+        1936
+      ],
+      "id": "8ba99541-c5f9-4181-b440-ea7a23760659",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.storage_url }}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          },
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "attachment_0"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2304,
+        1472
+      ],
+      "id": "1b6f82cc-4cbd-48d5-b576-0a021b0fd125",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "448c7a13-a0c3-41e7-bcb5-a6b731aa8ca5",
+              "leftValue": "={{ $json.resultado_avaliacao }}",
+              "rightValue": "valido",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -832,
+        1296
+      ],
+      "id": "cf414c8e-4c1e-4425-b0b4-8112ccb34f73",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "email_attachments",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Get many rows').item.json.attachment_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "valor",
+              "fieldValue": "=0"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -608,
+        1664
+      ],
+      "id": "bb7cd0cf-5262-43e9-bd6d-583960a3f3f0",
+      "name": "Update a row1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "m2NeTLsw3SoLf2IP",
+          "name": "Supabase FTD Email Base"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Função de avaliação de valor numérico\nreturn [\n  {\n    resultado_avaliacao: (() => {\n      const v = $json.output?.valor;\n      // Casos nulos, vazios ou texto \"null\"\n      if (v === null || v === undefined || v === '' || String(v).toLowerCase() === 'null')\n        return 'invalido';\n      // Limpa caracteres, substitui vírgula e tenta converter\n      const limpo = String(v).replace(/[^\\d.,-]/g, '').replace(',', '.');\n      const n = parseFloat(limpo);\n      // Se não for número → inválido\n      if (isNaN(n)) return 'invalido';\n      // Caso contrário → válido\n      return 'valido';\n    })(),\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1056,
+        1296
+      ],
+      "id": "26ac5dda-a4ae-4a8d-85db-8e75cb106561",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.mime_type }}",
+              "value2": "=message/rfc822"
+            },
+            {
+              "value1": "={{ $json.mime_type }}",
+              "value2": "application/ofx"
+            }
+          ]
+        },
+        "combineOperation": "any"
+      },
+      "id": "8bc7603a-f779-4c80-a7bf-ae818ac67c39",
+      "name": "Is Image?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -2960,
+        1648
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "448c7a13-a0c3-41e7-bcb5-a6b731aa8ca5",
+              "leftValue": "={{ $json.output.transacao.data_pgto.valor }}",
+              "rightValue": "null",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "1f911799-623f-4eef-9493-77a9fc65be72",
+              "leftValue": "={{ $json.output.transacao.data_pgto.valor }}",
+              "rightValue": "--",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1280,
+        1376
+      ],
+      "id": "c5b27225-e5d7-41cf-a9de-70a0c0f89573",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.mime_type }}",
+              "operation": "contains",
+              "value2": "=image"
+            }
+          ]
+        }
+      },
+      "id": "cfc7397e-47d0-4196-a277-e7e279e38a82",
+      "name": "Is Image?2",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -2528,
+        1568
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Image?1": {
+      "main": [
+        [
+          {
+            "node": "Process PDF1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Image?2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process PDF1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get many rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze image": {
+      "main": [
+        []
+      ]
+    },
+    "Analyze an image": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get many rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many rows": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "Update a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Is Image?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Analyze an image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "set",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update a row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Image?": {
+      "main": [
+        [
+          {
+            "node": "Update a row1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Image?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Update a row1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Image?2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update a row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f4331886-9f79-4bc8-aa8e-919f5681fda9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "099f1e1befc36cb37426544d3db2ed3a697cbeabeec5e3f29e2e2beeccc011e0"
+  },
+  "id": "gXlnIxXIwNean5wU",
+  "tags": []
+}

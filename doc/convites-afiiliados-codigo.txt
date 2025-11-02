@@ -1,0 +1,230 @@
+Perfeito, Nei 👌 — agora estamos conectando a última peça essencial do seu ecossistema:
+o **fluxo de convites e afiliações** — que completa o ciclo entre **pessoas_fisicas → afiliados → códigos de convite**, integrando tudo ao modelo de e-mails e pagamentos que já estruturamos.
+
+A seguir está um **resumo técnico do fluxo dos convites**, incluindo as tabelas envolvidas, os relacionamentos, e como isso se integra ao resto do sistema.
+
+---
+
+# 🧭 VISÃO GERAL DO FLUXO DE CONVITES
+
+O objetivo do fluxo é permitir que **qualquer membro da comunidade (pessoa_fisica)**
+possa **convidar novos afiliados** através de **códigos únicos**, controlando:
+
+* convites disponíveis
+* convites usados
+* padrinho (quem convidou)
+* afiliado (quem recebeu e aceitou o convite)
+
+---
+
+## 🧱 1. Estrutura das tabelas do fluxo
+
+### **🧍 pessoas_fisicas**
+
+> Já existente — é a **base de todos os participantes**, tanto padrinhos quanto afiliados.
+
+Campos relevantes:
+
+| Campo               | Função                                   |
+| ------------------- | ---------------------------------------- |
+| `id`                | Identificador único                      |
+| `email`             | Chave natural para vínculos              |
+| `convites_enviados` | Quantos convites já enviou               |
+| `convites_usados`   | Quantos foram aceitos                    |
+| `convites_dtatual`  | Controle de data da contagem de convites |
+| `ativo`             | Status do membro                         |
+
+---
+
+### **🔑 codigos_convite**
+
+> Contém os códigos únicos e seus parâmetros.
+
+| Campo            | Tipo        | Descrição                                                  |
+| ---------------- | ----------- | ---------------------------------------------------------- |
+| `codigo`         | text (PK)   | Código de convite (ex: `756a57e2eaba4632688ad282210dbabc`) |
+| `accessLink`     | text        | Link público do convite                                    |
+| `plano`          | text        | Ex: “Mensal 2025”, “Anual 2025”                            |
+| `maxActivations` | int         | Número máximo de usos                                      |
+| `expiration`     | timestamptz | Data de validade                                           |
+| `usos_atuais`    | int         | Quantas vezes já foi usado                                 |
+| `padrinho_id`    | uuid        | FK → pessoas_fisicas.id (quem gerou o código)              |
+| `ativo`          | boolean     | Indica se o código ainda pode ser usado                    |
+
+---
+
+### **🤝 afiliados**
+
+> Registra quem **aceitou o convite** e se associou à comunidade.
+
+| Campo            | Tipo        | Descrição                             |
+| ---------------- | ----------- | ------------------------------------- |
+| `id`             | uuid (PK)   | Identificador do afiliado             |
+| `padrinho_id`    | uuid        | FK → pessoas_fisicas.id               |
+| `codigo_convite` | text        | FK → codigos_convite.codigo           |
+| `afiliado_id`    | uuid        | FK → pessoas_fisicas.id (quem entrou) |
+| `data_convite`   | timestamptz | Quando o convite foi enviado          |
+| `data_aceite`    | timestamptz | Quando o afiliado aceitou             |
+| `status`         | text        | ex: “pendente”, “aceito”, “expirado”  |
+
+---
+
+## 🔗 2. RELACIONAMENTO ENTRE AS TABELAS
+
+```
+pessoas_fisicas (1)
+   ├──< codigos_convite (N)
+   │        └──< afiliados (N)
+   │                ├── padrinho_id → pessoas_fisicas.id
+   │                └── afiliado_id → pessoas_fisicas.id
+```
+
+👉 Em palavras:
+
+* Cada **pessoa física** pode gerar vários **códigos**.
+* Cada **código** pode ser usado por vários **afiliados** (até o limite).
+* Cada **afiliado** é também um registro em `pessoas_fisicas`.
+
+---
+
+## ⚙️ 3. FLUXO OPERACIONAL DO CONVITE
+
+### 📨 Etapa 1 — Geração do código
+
+* O padrinho gera um **código único** (registrado em `codigos_convite`).
+* O código inclui: tipo de plano, validade e número máximo de ativações.
+
+```sql
+insert into public.codigos_convite (codigo, accessLink, plano, maxActivations, expiration, padrinho_id)
+values ('756a57e2eaba4632688ad282210dbabc',
+        'https://t.me/INEMAMembroBot?start=c756a57e2eaba4632688ad282210dbabc',
+        'Mensal 2025',
+        1,
+        '2025-11-30T00:00:00+00:00',
+        'UUID_do_padrinho');
+```
+
+---
+
+### 💌 Etapa 2 — Envio do convite
+
+* O sistema envia o link do convite (por e-mail, Telegram ou n8n).
+* O padrinho é avisado: “Convite enviado — 4 restantes.”
+
+---
+
+### 🧾 Etapa 3 — Aceite do afiliado
+
+* Quando o convidado entra pelo link, o fluxo cadastra:
+
+  * o afiliado em `pessoas_fisicas` (se não existir),
+  * um registro em `afiliados` com vínculo ao padrinho,
+  * e incrementa os contadores.
+
+```sql
+update pessoas_fisicas
+set convites_usados = convites_usados + 1
+where id = (select padrinho_id from codigos_convite where codigo = '...');
+
+update codigos_convite
+set usos_atuais = usos_atuais + 1
+where codigo = '...';
+```
+
+---
+
+### 🧠 Etapa 4 — Integração com pagamentos
+
+Se o afiliado fizer pagamento:
+
+* o sistema atualiza `pessoas_fisicas.valor_ultimo_pagamento` e `data_ultimo_pagamento`,
+* o padrinho pode ganhar convites extras ou bônus.
+
+---
+
+## 📈 4. EXEMPLOS DE CONSULTAS ÚTEIS
+
+### 🔍 Quantos convites cada padrinho já usou:
+
+```sql
+select
+  pf.nome,
+  pf.email,
+  pf.convites_enviados,
+  pf.convites_usados,
+  (pf.convites_enviados - pf.convites_usados) as convites_disponiveis
+from public.pessoas_fisicas pf
+order by convites_disponiveis desc;
+```
+
+---
+
+### 🔑 Quantos códigos ainda ativos:
+
+```sql
+select
+  codigo,
+  plano,
+  maxActivations,
+  usos_atuais,
+  (maxActivations - usos_atuais) as restantes,
+  expiration
+from public.codigos_convite
+where ativo = true;
+```
+
+---
+
+### 🤝 Afiliados aceitos recentemente:
+
+```sql
+select
+  a.data_aceite,
+  padrinho.nome as nome_padrinho,
+  afiliado.nome as nome_afiliado,
+  c.plano,
+  c.codigo
+from public.afiliados a
+join public.pessoas_fisicas padrinho on a.padrinho_id = padrinho.id
+join public.pessoas_fisicas afiliado on a.afiliado_id = afiliado.id
+join public.codigos_convite c on a.codigo_convite = c.codigo
+order by a.data_aceite desc;
+```
+
+---
+
+## 🧩 5. INTEGRAÇÃO COM O ECOSSISTEMA
+
+| Módulo                          | Relacionamento                         | Finalidade                           |
+| ------------------------------- | -------------------------------------- | ------------------------------------ |
+| `emails`                        | Origem dos convites (envio automático) | Gatilho de convites                  |
+| `email_attachments`             | Comprovantes de pagamento              | Validação de afiliado                |
+| `pagamentos`                    | Define status ativo/anual/mensal       | Atualiza pessoas                     |
+| `pessoas_fisicas`               | Núcleo do sistema                      | Une tudo                             |
+| `codigos_convite` + `afiliados` | Rede de convites                       | Crescimento e rastreio da comunidade |
+
+---
+
+## 🧭 RESUMO VISUAL
+
+```
+pessoas_fisicas
+ ├──< codigos_convite
+ │       ├── codigo
+ │       ├── plano
+ │       ├── expiration
+ │       ├── padrinho_id → pessoas_fisicas.id
+ │       └── usos_atuais / maxActivations
+ └──< afiliados
+         ├── afiliado_id → pessoas_fisicas.id
+         ├── padrinho_id → pessoas_fisicas.id
+         ├── codigo_convite → codigos_convite.codigo
+         └── data_aceite / status
+```
+
+---
+
+Posso gerar agora um **diagrama visual 16:9** desse fluxo (com as tabelas `pessoas_fisicas`, `codigos_convite` e `afiliados` + relacionamentos)
+no mesmo estilo dos anteriores — ideal pra documentar ou mostrar em palestra.
+Quer que eu gere a imagem?
+
