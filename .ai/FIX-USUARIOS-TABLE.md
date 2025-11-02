@@ -1,12 +1,16 @@
-# ✅ FIX: Error "relation usuarios does not exist"
+# ✅ FIX: Erros nas RLS Policies - RESOLVIDO
 
-## 🔍 Problema Identificado
+## 🔍 Problemas Identificados e Corrigidos
 
-O erro ocorreu porque as RLS (Row Level Security) policies nas migrations estavam referenciando uma tabela `usuarios` que não existe no banco de dados.
+### Erro 1: `relation "usuarios" does not exist`
+As RLS policies estavam referenciando uma tabela `usuarios` que não existe.
 
-## 🛠️ Correção Aplicada
+### Erro 2: `column ur.userId does not exist`
+As RLS policies estavam usando `userId` (camelCase), mas o PostgreSQL usa `user_id` (snake_case).
 
-Atualizei **TODAS** as migrations para usar a tabela correta: `user_roles`
+## 🛠️ Correções Aplicadas
+
+Atualizei **TODAS** as migrations para usar a tabela E coluna corretas: `user_roles.user_id`
 
 ### Arquivos Corrigidos:
 
@@ -15,9 +19,9 @@ Atualizei **TODAS** as migrations para usar a tabela correta: `user_roles`
 3. ✅ `packages/database/prisma/migrations/004-criar-configuracoes-email.sql`
 4. ✅ `packages/database/prisma/migrations/007-criar-log-emails.sql`
 
-### Mudança Realizada:
+### Mudanças Realizadas:
 
-**ANTES (incorreto):**
+**ANTES (totalmente incorreto):**
 ```sql
 EXISTS (
   SELECT 1 FROM usuarios u
@@ -26,14 +30,25 @@ EXISTS (
 )
 ```
 
-**DEPOIS (correto):**
+**TENTATIVA 1 (ainda incorreto):**
 ```sql
 EXISTS (
   SELECT 1 FROM user_roles ur
-  WHERE ur."userId" = auth.uid()::text
+  WHERE ur."userId" = auth.uid()::text  -- ❌ userId não existe!
   AND ur.role = 'ADMIN'
 )
 ```
+
+**AGORA (100% correto):**
+```sql
+EXISTS (
+  SELECT 1 FROM user_roles ur
+  WHERE ur.user_id = auth.uid()::text  -- ✅ Correto!
+  AND ur.role = 'ADMIN'
+)
+```
+
+**Lição aprendida:** PostgreSQL/Supabase usa `snake_case` para colunas, não `camelCase` como no Prisma schema!
 
 ## 📋 Próximos Passos
 
