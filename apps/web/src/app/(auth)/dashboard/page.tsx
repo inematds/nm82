@@ -50,6 +50,7 @@ interface UltimoAfiliado {
   localizacao: string;
   padrinhoNome: string;
   padrinhoLocalizacao: string;
+  padrinhoDataUltimoPagamento: string | null;
   status: string;
   dataCadastro: string;
 }
@@ -403,12 +404,12 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Padrinhos por Dia */}
+        {/* Pessoas Cadastradas por Dia */}
         <Card>
           <CardHeader>
-            <CardTitle>Padrinhos Cadastrados por Dia</CardTitle>
+            <CardTitle>Pessoas Cadastradas por Dia</CardTitle>
             <p className="text-sm text-gray-500">
-              Total: {padrinhosStats?.total || 0} padrinhos nos últimos {diasGrafico} dias
+              Total: {padrinhosStats?.total || 0} pessoas nos últimos {diasGrafico} dias
             </p>
           </CardHeader>
           <CardContent>
@@ -430,7 +431,7 @@ export default function DashboardPage() {
                       const date = new Date(value as string);
                       return date.toLocaleDateString('pt-BR');
                     }}
-                    formatter={(value) => [value, 'Padrinhos']}
+                    formatter={(value) => [value, 'Pessoas']}
                   />
                   <Line
                     type="monotone"
@@ -444,7 +445,7 @@ export default function DashboardPage() {
               </ResponsiveContainer>
             ) : (
               <div className="h-[250px] flex items-center justify-center text-gray-500">
-                Nenhum padrinho nos últimos {diasGrafico} dias
+                Nenhuma pessoa nos últimos {diasGrafico} dias
               </div>
             )}
           </CardContent>
@@ -574,7 +575,9 @@ export default function DashboardPage() {
                   <tr className="text-left">
                     <th className="pb-2 font-medium text-gray-700">Afiliado</th>
                     <th className="pb-2 font-medium text-gray-700">Localização</th>
+                    <th className="pb-2 font-medium text-gray-700">Data Cadastro</th>
                     <th className="pb-2 font-medium text-gray-700">Padrinho</th>
+                    <th className="pb-2 font-medium text-gray-700">Últ. Pag. Padrinho</th>
                     <th className="pb-2 font-medium text-gray-700 text-center">Status</th>
                   </tr>
                 </thead>
@@ -589,10 +592,24 @@ export default function DashboardPage() {
                         <p className="text-gray-700">{afiliado.localizacao}</p>
                       </td>
                       <td className="py-3">
+                        <p className="text-gray-700">
+                          {afiliado.dataCadastro
+                            ? new Date(afiliado.dataCadastro).toLocaleDateString('pt-BR')
+                            : '-'}
+                        </p>
+                      </td>
+                      <td className="py-3">
                         <p className="font-medium text-gray-900">{afiliado.padrinhoNome}</p>
                         {afiliado.padrinhoLocalizacao && (
                           <p className="text-xs text-gray-500">{afiliado.padrinhoLocalizacao}</p>
                         )}
+                      </td>
+                      <td className="py-3">
+                        <p className="text-gray-700">
+                          {afiliado.padrinhoDataUltimoPagamento
+                            ? new Date(afiliado.padrinhoDataUltimoPagamento).toLocaleDateString('pt-BR')
+                            : '-'}
+                        </p>
                       </td>
                       <td className="py-3 text-center">
                         <span

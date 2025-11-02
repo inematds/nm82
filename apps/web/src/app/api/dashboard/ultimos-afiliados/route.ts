@@ -19,10 +19,10 @@ export async function GET() {
     }
     */
 
-    // Get last 10 afiliados with their pessoa_fisica data
+    // Get last 10 afiliados with their data (denormalized in afiliados table)
     const { data: afiliados, error: afiliadosError } = await supabaseAdmin
       .from('afiliados')
-      .select('id, afiliado_id, padrinho_id, status, data_cadastro, data_aprovacao')
+      .select('id, afiliado_id, padrinho_id, status, data_cadastro, data_email, nome, email, cidade, uf')
       .order('data_cadastro', { ascending: false })
       .limit(10);
 
@@ -30,31 +30,24 @@ export async function GET() {
       throw afiliadosError;
     }
 
-    // Get pessoa_fisica data for each afiliado
+    // Get padrinho data for each afiliado
     const afiliadosWithDetails = await Promise.all(
       (afiliados || []).map(async (afiliado) => {
-        // Buscar dados do afiliado (pessoa física)
-        const { data: pessoa } = await supabaseAdmin
-          .from('pessoas_fisicas')
-          .select('nome, email, cidade, uf')
-          .eq('id', afiliado.afiliado_id)
-          .single();
-
-        // Buscar dados do padrinho
+        // Buscar dados do padrinho incluindo data_ultimo_pagamento
         const { data: padrinho } = await supabaseAdmin
           .from('pessoas_fisicas')
-          .select('nome, cidade, uf')
+          .select('nome, cidade, uf, data_ultimo_pagamento')
           .eq('id', afiliado.padrinho_id)
           .single();
 
-        // Formatar localização do afiliado
+        // Formatar localização do afiliado (dados denormalizados)
         let localizacao = '-';
-        if (pessoa?.cidade && pessoa?.uf) {
-          localizacao = `${pessoa.cidade}, ${pessoa.uf}`;
-        } else if (pessoa?.uf) {
-          localizacao = pessoa.uf;
-        } else if (pessoa?.cidade) {
-          localizacao = pessoa.cidade;
+        if (afiliado.cidade && afiliado.uf) {
+          localizacao = `${afiliado.cidade}, ${afiliado.uf}`;
+        } else if (afiliado.uf) {
+          localizacao = afiliado.uf;
+        } else if (afiliado.cidade) {
+          localizacao = afiliado.cidade;
         }
 
         // Formatar localização do padrinho
@@ -69,14 +62,15 @@ export async function GET() {
 
         return {
           id: afiliado.id,
-          nome: pessoa?.nome || 'N/A',
-          email: pessoa?.email || 'N/A',
+          nome: afiliado.nome || 'N/A',
+          email: afiliado.email || 'N/A',
           localizacao,
           padrinhoNome: padrinho?.nome || 'N/A',
           padrinhoLocalizacao,
+          padrinhoDataUltimoPagamento: padrinho?.data_ultimo_pagamento || null,
           status: afiliado.status,
           dataCadastro: afiliado.data_cadastro,
-          dataAprovacao: afiliado.data_aprovacao,
+          dataEmail: afiliado.data_email, // Substituído dataAprovacao por dataEmail
         };
       })
     );

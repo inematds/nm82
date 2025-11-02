@@ -53,35 +53,35 @@ export async function GET() {
         .from('afiliados')
         .select('*', { count: 'exact', head: true }),
 
-      // Afiliados Pendentes
+      // Afiliados Pendentes (status: "pendente" ou "Pendente")
       supabaseAdmin
         .from('afiliados')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'PENDENTE'),
+        .or('status.eq.PENDENTE,status.eq.Pendente,status.eq.pendente'),
 
-      // Afiliados Aprovados
+      // Afiliados Aprovados (status: "Enviado" ou "APROVADO")
       supabaseAdmin
         .from('afiliados')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'APROVADO'),
+        .or('status.eq.APROVADO,status.eq.Aprovado,status.eq.Enviado'),
 
-      // Afiliados Rejeitados
+      // Afiliados Rejeitados (status: "REJEITADO" ou "Rejeitado")
       supabaseAdmin
         .from('afiliados')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'REJEITADO'),
+        .or('status.eq.REJEITADO,status.eq.Rejeitado'),
 
-      // Códigos Disponíveis
+      // Códigos Disponíveis (email IS NULL)
       supabaseAdmin
         .from('codigos_convite')
         .select('*', { count: 'exact', head: true })
-        .eq('usado', false),
+        .is('email', null),
 
-      // Códigos Usados
+      // Códigos Usados (email IS NOT NULL)
       supabaseAdmin
         .from('codigos_convite')
         .select('*', { count: 'exact', head: true })
-        .eq('usado', true),
+        .not('email', 'is', null),
     ]);
 
     // Buscar distribuição por UF

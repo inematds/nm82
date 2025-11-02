@@ -17,9 +17,11 @@ html/
 .env.local
 .env.development.local
 .env.test.local
+.env.production
 .env.production.local
 **/.env
 **/.env.local
+**/.env.production
 
 # Backups de dados sensíveis
 *.backup
@@ -169,3 +171,18 @@ nul
 *.key
 *.cert
 *.crt
+
+# Scripts de importação e testes
+import-*.js
+test-*.js
+check-*.js
+clear-*.js
+debug-*.js
+fix-*.js
+validate-*.js
+verificar-*.js
+
+# Documentação temporária
+*.md
+!README.md
+!CHANGELOG.md

@@ -6,12 +6,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const dias = parseInt(searchParams.get('dias') || '30');
 
-    // Get padrinhos from pessoas_fisicas with convites
-    const { data: padrinhos, error } = await supabaseAdmin
+    // Get all pessoas_fisicas by data_cadastro (created_at)
+    const { data: pessoas, error } = await supabaseAdmin
       .from('pessoas_fisicas')
       .select('created_at')
-      .or('convites_enviados.gt.0,convites_disponiveis.gt.0,convites_usados.gt.0')
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true, nullsFirst: false });
 
     if (error) throw error;
 
@@ -20,10 +19,13 @@ export async function GET(request: Request) {
     const dataInicio = new Date(hoje);
     dataInicio.setDate(hoje.getDate() - dias);
 
-    // Filter by date range
-    const padrinhosFiltrados = padrinhos?.filter((padrinho) => {
-      const dataCadastro = new Date(padrinho.created_at);
-      return dataCadastro >= dataInicio;
+    // Filter by date range (use created_at)
+    const pessoasFiltradas = pessoas?.filter((pessoa) => {
+      const dataCadastro = pessoa.created_at
+        ? new Date(pessoa.created_at)
+        : null;
+
+      return dataCadastro && dataCadastro >= dataInicio;
     }) || [];
 
     // Group by date
@@ -37,11 +39,16 @@ export async function GET(request: Request) {
       statsMap.set(dateKey, 0);
     }
 
-    // Count padrinhos per day
-    padrinhosFiltrados.forEach((padrinho) => {
-      const date = new Date(padrinho.created_at);
-      const dateKey = date.toISOString().split('T')[0];
-      statsMap.set(dateKey, (statsMap.get(dateKey) || 0) + 1);
+    // Count pessoas per day
+    pessoasFiltradas.forEach((pessoa) => {
+      const dataCadastro = pessoa.created_at
+        ? new Date(pessoa.created_at)
+        : null;
+
+      if (dataCadastro) {
+        const dateKey = dataCadastro.toISOString().split('T')[0];
+        statsMap.set(dateKey, (statsMap.get(dateKey) || 0) + 1);
+      }
     });
 
     // Convert to array and sort
@@ -51,7 +58,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       stats,
-      total: padrinhosFiltrados.length,
+      total: pessoasFiltradas.length,
       days: dias,
     });
   } catch (error: any) {

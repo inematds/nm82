@@ -59,7 +59,13 @@
       "Bash(test:*)",
       "Bash(echo:*)",
       "Bash(timeout 20 bash:*)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(del:*)",
+      "Bash(del import-from-reais.js)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:r0Gb2RMLsxSQIxZF@db.lcmaaossplssflfrrank.supabase.co:5432/postgres\" npx prisma db pull:*)",
+      "Bash(npx prisma format:*)",
+      "Bash(timeout 5 curl:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

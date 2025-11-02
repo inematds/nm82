@@ -46,20 +46,13 @@ export async function POST(request: Request) {
       }
     }
 
-    // Convert Set to array of objects
-    const now = new Date().toISOString();
-    const expiracaoDate = new Date();
-    expiracaoDate.setDate(expiracaoDate.getDate() + 90); // 90 days
-
+    // Convert Set to array of objects matching the schema
     Array.from(codigosSet).forEach((codigo) => {
       codigos.push({
         id: crypto.randomUUID(),
         codigo,
         email: null,
-        usado: false,
-        data_atribuicao: null,
-        data_expiracao: expiracaoDate.toISOString(),
-        created_at: now,
+        data: null, // null means available/not used
       });
     });
 

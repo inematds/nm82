@@ -17,15 +17,21 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 
 export interface Afiliado {
   id: string;
-  nome: string;
-  email: string;
-  status: 'PENDENTE' | 'APROVADO' | 'REJEITADO';
+  nome: string | null;
+  email: string | null;
+  status: string; // "Enviado", "Pendente", etc
   padrinho_id: string;
-  codigo_convite_id: string | null;
-  data_aprovacao: string | null;
-  data_rejeicao: string | null;
-  motivo_rejeicao: string | null;
-  created_at: string;
+  afiliado_id: string | null;
+  data_cadastro: string;
+  data_email: string | null;
+  email_enviado: boolean;
+  cpf: string | null;
+  data_nascimento: string | null;
+  sexo: string | null;
+  cidade: string | null;
+  uf: string | null;
+  nicho_atuacao: string | null;
+  telefone: string | null;
 }
 
 export interface Padrinho {
@@ -76,7 +82,7 @@ export class AfiliadoService {
         throw new Error('AFILIADO_NAO_ENCONTRADO');
       }
 
-      if (afiliado.status !== 'PENDENTE') {
+      if (afiliado.status !== 'Pendente' && afiliado.status !== 'PENDENTE') {
         flowLogger.error({ status: afiliado.status }, 'Status inválido');
         throw new Error('STATUS_INVALIDO');
       }
@@ -110,12 +116,12 @@ export class AfiliadoService {
         const { error: updateAfiliadoError } = await supabaseAdmin
           .from('afiliados')
           .update({
-            status: 'APROVADO',
-            codigo_convite_id: codigo.id,
-            data_aprovacao: new Date().toISOString(),
+            status: 'Enviado',
+            email_enviado: true,
+            data_email: new Date().toISOString(),
           })
           .eq('id', afiliado.id)
-          .eq('status', 'PENDENTE');
+          .eq('status', afiliado.status);
 
         if (updateAfiliadoError) {
           await CodigoService.release(codigo.id, flowLogger);
@@ -182,9 +188,9 @@ export class AfiliadoService {
         success: true,
         afiliado: {
           ...afiliado,
-          status: 'APROVADO',
-          codigo_convite_id: codigo.id,
-          data_aprovacao: new Date().toISOString(),
+          status: 'Enviado',
+          email_enviado: true,
+          data_email: new Date().toISOString(),
         } as Afiliado,
         codigo,
         emailEnviado: emailResult.success,
@@ -216,16 +222,16 @@ export class AfiliadoService {
         .eq('id', params.afiliadoId)
         .single();
 
-      if (!afiliado || afiliado.status !== 'PENDENTE') {
+      if (!afiliado || (afiliado.status !== 'Pendente' && afiliado.status !== 'PENDENTE')) {
         throw new Error('AFILIADO_INVALIDO');
       }
 
+      // Nota: Campos data_rejeicao e motivo_rejeicao não existem no banco real
+      // O motivo será registrado apenas no audit log
       await supabaseAdmin
         .from('afiliados')
         .update({
-          status: 'REJEITADO',
-          data_rejeicao: new Date().toISOString(),
-          motivo_rejeicao: params.motivo,
+          status: 'Rejeitado',
         })
         .eq('id', afiliado.id);
 
@@ -241,7 +247,7 @@ export class AfiliadoService {
 
       return {
         success: true,
-        afiliado: { ...afiliado, status: 'REJEITADO' } as Afiliado,
+        afiliado: { ...afiliado, status: 'Rejeitado' } as Afiliado,
       };
     } catch (error: any) {
       logFlowEnd(flowLogger, FlowType.REJEITAR_AFILIADO, startTime, false);

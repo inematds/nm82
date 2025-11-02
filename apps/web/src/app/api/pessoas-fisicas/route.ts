@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     let query = supabaseAdmin
       .from('pessoas_fisicas')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('data_ultimo_pagamento', { ascending: false, nullsFirst: false })
       .limit(parseInt(limit));
 
     // Apply search filter

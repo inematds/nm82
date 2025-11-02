@@ -50,6 +50,15 @@ interface Padrinho {
   afiliadosAprovados: number;
   afiliadosRejeitados: number;
   createdAt: string;
+  // Campos financeiros e administrativos
+  tipo_assinatura: string | null;
+  valor_ultimo_pagamento: number | null;
+  data_ultimo_pagamento: string | null;
+  data_vencimento: string | null;
+  data_primeiro_contato: string | null;
+  data_ultimo_envio: string | null;
+  cartao: boolean;
+  escolaridade: string | null;
 }
 
 interface PadrinhosStats {
@@ -100,9 +109,21 @@ export default function PadrinhosPage() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [limit, setLimit] = useState(100);
-  const [convitesEnviados, setConvitesEnviados] = useState(0);
-  const [convitesUsados, setConvitesUsados] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Form state para edição
+  const [formData, setFormData] = useState({
+    convitesEnviados: 0,
+    convitesUsados: 0,
+    tipo_assinatura: '',
+    valor_ultimo_pagamento: '',
+    data_ultimo_pagamento: '',
+    data_vencimento: '',
+    data_primeiro_contato: '',
+    data_ultimo_envio: '',
+    cartao: false,
+    escolaridade: '',
+  });
 
   const { data: padrinhos, isLoading } = useQuery({
     queryKey: ['padrinhos', limit],
@@ -121,8 +142,8 @@ export default function PadrinhosPage() {
   });
 
   const filteredPadrinhos = padrinhos?.filter((padrinho) =>
-    padrinho.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    padrinho.email.toLowerCase().includes(searchTerm.toLowerCase())
+    padrinho.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    padrinho.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleVer = (padrinho: Padrinho) => {
@@ -130,18 +151,45 @@ export default function PadrinhosPage() {
     setShowDetailsDialog(true);
   };
 
+  // Helper function to format dates for input[type="date"]
+  const formatDateForInput = (dateString: string | null): string => {
+    if (!dateString) return '';
+    try {
+      // Extract just the date part (YYYY-MM-DD) from ISO string or timestamp
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch {
+      return '';
+    }
+  };
+
   const handleEditar = (padrinho: Padrinho) => {
     setSelectedPadrinho(padrinho);
-    setConvitesEnviados(padrinho.convitesEnviados);
-    setConvitesUsados(padrinho.convitesUsados);
+    setFormData({
+      convitesEnviados: padrinho.convitesEnviados || 0,
+      convitesUsados: padrinho.convitesUsados || 0,
+      tipo_assinatura: padrinho.tipo_assinatura || '',
+      valor_ultimo_pagamento: padrinho.valor_ultimo_pagamento?.toString() || '',
+      data_ultimo_pagamento: formatDateForInput(padrinho.data_ultimo_pagamento),
+      data_vencimento: formatDateForInput(padrinho.data_vencimento),
+      data_primeiro_contato: formatDateForInput(padrinho.data_primeiro_contato),
+      data_ultimo_envio: formatDateForInput(padrinho.data_ultimo_envio),
+      cartao: padrinho.cartao || false,
+      escolaridade: padrinho.escolaridade || '',
+    });
     setShowEditDialog(true);
   };
 
-  const handleSalvarConvites = async () => {
+  const handleSalvar = async () => {
     if (!selectedPadrinho) return;
 
     // Validação
-    if (convitesUsados > convitesEnviados) {
+    if (formData.convitesUsados > formData.convitesEnviados) {
       alert('Convites usados não pode ser maior que enviados');
       return;
     }
@@ -149,18 +197,29 @@ export default function PadrinhosPage() {
     setIsSaving(true);
 
     try {
-      const res = await fetch(`/api/padrinhos/${selectedPadrinho.id}/convites`, {
+      const res = await fetch(`/api/padrinhos/${selectedPadrinho.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ convitesEnviados, convitesUsados }),
+        body: JSON.stringify({
+          convitesEnviados: formData.convitesEnviados,
+          convitesUsados: formData.convitesUsados,
+          tipo_assinatura: formData.tipo_assinatura || null,
+          valor_ultimo_pagamento: formData.valor_ultimo_pagamento ? parseFloat(formData.valor_ultimo_pagamento) : null,
+          data_ultimo_pagamento: formData.data_ultimo_pagamento || null,
+          data_vencimento: formData.data_vencimento || null,
+          data_primeiro_contato: formData.data_primeiro_contato || null,
+          data_ultimo_envio: formData.data_ultimo_envio || null,
+          cartao: formData.cartao,
+          escolaridade: formData.escolaridade || null,
+        }),
       });
 
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.error || 'Erro ao atualizar convites');
+        throw new Error(error.error || 'Erro ao atualizar padrinho');
       }
 
-      alert('Convites atualizados com sucesso!');
+      alert('Padrinho atualizado com sucesso!');
       setShowEditDialog(false);
       setSelectedPadrinho(null);
 
@@ -168,10 +227,14 @@ export default function PadrinhosPage() {
       window.location.reload();
     } catch (error: any) {
       console.error('Erro:', error);
-      alert(error.message || 'Erro ao atualizar convites');
+      alert(error.message || 'Erro ao atualizar padrinho');
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const updateFormData = (field: string, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -536,11 +599,11 @@ export default function PadrinhosPage() {
 
       {/* Dialog - Editar Convites */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Editar Convites do Padrinho</DialogTitle>
+            <DialogTitle>Editar Padrinho</DialogTitle>
             <DialogDescription>
-              Ajustar quantidade de convites enviados e usados
+              Editar todos os dados do padrinho
             </DialogDescription>
           </DialogHeader>
 
@@ -621,8 +684,8 @@ export default function PadrinhosPage() {
                     id="enviados"
                     type="number"
                     min="0"
-                    value={convitesEnviados}
-                    onChange={(e) => setConvitesEnviados(parseInt(e.target.value) || 0)}
+                    value={formData.convitesEnviados}
+                    onChange={(e) => updateFormData('convitesEnviados', parseInt(e.target.value) || 0)}
                   />
                 </div>
 
@@ -632,12 +695,12 @@ export default function PadrinhosPage() {
                     id="usados"
                     type="number"
                     min="0"
-                    max={convitesEnviados}
-                    value={convitesUsados}
-                    onChange={(e) => setConvitesUsados(parseInt(e.target.value) || 0)}
+                    max={formData.convitesEnviados}
+                    value={formData.convitesUsados}
+                    onChange={(e) => updateFormData('convitesUsados', parseInt(e.target.value) || 0)}
                   />
                   <p className="text-xs text-gray-500">
-                    Máximo: {convitesEnviados} (enviados)
+                    Máximo: {formData.convitesEnviados} (enviados)
                   </p>
                 </div>
               </div>
@@ -648,25 +711,151 @@ export default function PadrinhosPage() {
                 <div>
                   <div className="text-xs text-gray-600">Enviados</div>
                   <div className="text-xl font-bold text-blue-600">
-                    {convitesEnviados}
+                    {formData.convitesEnviados}
                   </div>
                 </div>
                 <div>
                   <div className="text-xs text-gray-600">Usados</div>
                   <div className="text-xl font-bold text-green-600">
-                    {convitesUsados}
+                    {formData.convitesUsados}
                   </div>
                 </div>
                 <div>
                   <div className="text-xs text-gray-600">Disponíveis</div>
                   <div className="text-xl font-bold text-orange-600">
-                    {convitesEnviados - convitesUsados}
+                    {formData.convitesEnviados - formData.convitesUsados}
                   </div>
                 </div>
               </div>
             </div>
 
-            {convitesUsados > convitesEnviados && (
+            {/* Dados Financeiros e Administrativos */}
+            <div className="border-t pt-4">
+              <h4 className="font-medium text-gray-900 mb-3">Dados Financeiros</h4>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="tipo_assinatura">Tipo de Assinatura</Label>
+                  <Select
+                    value={formData.tipo_assinatura || undefined}
+                    onValueChange={(v) => updateFormData('tipo_assinatura', v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="mensal">Mensal</SelectItem>
+                      <SelectItem value="trimestral">Trimestral</SelectItem>
+                      <SelectItem value="semestral">Semestral</SelectItem>
+                      <SelectItem value="anual">Anual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="valor_ultimo_pagamento">Valor Último Pagamento (R$)</Label>
+                  <Input
+                    id="valor_ultimo_pagamento"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.valor_ultimo_pagamento}
+                    onChange={(e) => updateFormData('valor_ultimo_pagamento', e.target.value)}
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="data_ultimo_pagamento">Data Último Pagamento</Label>
+                  <Input
+                    id="data_ultimo_pagamento"
+                    type="date"
+                    value={formData.data_ultimo_pagamento}
+                    onChange={(e) => updateFormData('data_ultimo_pagamento', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="data_vencimento">Data de Vencimento</Label>
+                  <Input
+                    id="data_vencimento"
+                    type="date"
+                    value={formData.data_vencimento}
+                    onChange={(e) => updateFormData('data_vencimento', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cartao">Possui Cartão</Label>
+                  <Select
+                    value={formData.cartao.toString()}
+                    onValueChange={(v) => updateFormData('cartao', v === 'true')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Sim</SelectItem>
+                      <SelectItem value="false">Não</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Datas Administrativas */}
+            <div className="border-t pt-4">
+              <h4 className="font-medium text-gray-900 mb-3">Datas Administrativas</h4>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="data_primeiro_contato">Data Primeiro Contato</Label>
+                  <Input
+                    id="data_primeiro_contato"
+                    type="date"
+                    value={formData.data_primeiro_contato}
+                    onChange={(e) => updateFormData('data_primeiro_contato', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="data_ultimo_envio">Data Último Envio</Label>
+                  <Input
+                    id="data_ultimo_envio"
+                    type="date"
+                    value={formData.data_ultimo_envio}
+                    onChange={(e) => updateFormData('data_ultimo_envio', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Outros Dados */}
+            <div className="border-t pt-4">
+              <h4 className="font-medium text-gray-900 mb-3">Outros Dados</h4>
+
+              <div className="space-y-2">
+                <Label htmlFor="escolaridade">Escolaridade</Label>
+                <Select
+                  value={formData.escolaridade || undefined}
+                  onValueChange={(v) => updateFormData('escolaridade', v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Fundamental">Ensino Fundamental</SelectItem>
+                    <SelectItem value="Médio">Ensino Médio</SelectItem>
+                    <SelectItem value="Superior">Ensino Superior</SelectItem>
+                    <SelectItem value="Pós-graduação">Pós-graduação</SelectItem>
+                    <SelectItem value="Mestrado">Mestrado</SelectItem>
+                    <SelectItem value="Doutorado">Doutorado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {formData.convitesUsados > formData.convitesEnviados && (
               <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
                 ⚠️ Convites usados não pode ser maior que enviados
               </div>
@@ -682,8 +871,8 @@ export default function PadrinhosPage() {
               Cancelar
             </Button>
             <Button
-              onClick={handleSalvarConvites}
-              disabled={isSaving || convitesUsados > convitesEnviados}
+              onClick={handleSalvar}
+              disabled={isSaving || formData.convitesUsados > formData.convitesEnviados}
             >
               {isSaving ? 'Salvando...' : 'Salvar'}
             </Button>

@@ -83,6 +83,14 @@ export async function GET(request: Request) {
         afiliadosAprovados: stats.aprovados,
         afiliadosRejeitados: stats.rejeitados,
         createdAt: pessoa.created_at,
+        // Campos financeiros e administrativos
+        tipo_assinatura: pessoa.tipo_assinatura,
+        valor_ultimo_pagamento: pessoa.valor_ultimo_pagamento ? parseFloat(pessoa.valor_ultimo_pagamento) : null,
+        data_vencimento: pessoa.data_vencimento,
+        data_primeiro_contato: pessoa.data_primeiro_contato,
+        data_ultimo_envio: pessoa.data_ultimo_envio,
+        cartao: pessoa.cartao || false,
+        escolaridade: pessoa.escolaridade,
       };
     });
 

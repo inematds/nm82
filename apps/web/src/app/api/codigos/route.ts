@@ -13,21 +13,31 @@ export async function GET(request: Request) {
       .from('codigos_convite')
       .select('*');
 
-    // Apply status filter
+    // Apply status filter - "usado" means data IS NOT NULL, "disponivel" means data IS NULL
     if (status === 'usado') {
-      query = query.eq('usado', true).order('data_atribuicao', { ascending: false, nullsFirst: false });
+      query = query.not('data', 'is', null).order('data', { ascending: false });
     } else if (status === 'disponivel') {
-      query = query.eq('usado', false).order('created_at', { ascending: false });
+      query = query.is('data', null).order('atualizado_em', { ascending: false });
     } else {
-      // For "TODOS", order by usado DESC (used first), then by appropriate date
-      query = query.order('usado', { ascending: false }).order('data_atribuicao', { ascending: false, nullsFirst: false });
+      // For "TODOS", order by data DESC (used first with most recent), then unused
+      query = query.order('data', { ascending: false, nullsFirst: false });
     }
 
     const { data: codigos, error } = await query.limit(parseInt(limit));
 
     if (error) throw error;
 
-    return NextResponse.json(codigos || []);
+    // Transform data to match frontend expectations
+    const transformedCodigos = codigos?.map(codigo => ({
+      id: codigo.id,
+      codigo: codigo.codigo,
+      email: codigo.email,
+      usado: codigo.data !== null,
+      data_atribuicao: codigo.data,
+      created_at: codigo.atualizado_em,
+    })) || [];
+
+    return NextResponse.json(transformedCodigos);
   } catch (error: any) {
     console.error('Error fetching códigos:', error);
     return NextResponse.json(

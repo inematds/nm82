@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const status = searchParams.get('status');
     const limit = searchParams.get('limit') || '100';
 
-    // Build query
+    // Build query - dados do afiliado estão denormalizados na tabela afiliados
     let query = supabaseAdmin
       .from('afiliados')
       .select(`
@@ -19,7 +19,16 @@ export async function GET(request: Request) {
         padrinho_id,
         status,
         data_cadastro,
-        data_aprovacao
+        data_email,
+        nome,
+        email,
+        cpf,
+        data_nascimento,
+        sexo,
+        cidade,
+        uf,
+        nicho_atuacao,
+        telefone
       `)
       .order('data_cadastro', { ascending: false })
       .limit(parseInt(limit));
@@ -33,31 +42,34 @@ export async function GET(request: Request) {
 
     if (afiliadosError) throw afiliadosError;
 
-    // Get pessoa_fisica data for each afiliado (nome, email) + padrinho nome
+    // Get padrinho nome for each afiliado
     const afiliadosWithDetails = await Promise.all(
       (afiliados || []).map(async (afiliado) => {
-        // Get afiliado pessoa
-        const { data: afiliadoPessoa } = await supabaseAdmin
-          .from('pessoas_fisicas')
-          .select('nome, email')
-          .eq('id', afiliado.afiliado_id)
-          .single();
-
-        // Get padrinho pessoa
+        // Get padrinho pessoa com data do ultimo pagamento
         const { data: padrinhoPessoa } = await supabaseAdmin
           .from('pessoas_fisicas')
-          .select('nome')
+          .select('nome, data_ultimo_pagamento')
           .eq('id', afiliado.padrinho_id)
           .maybeSingle();
 
         return {
           id: afiliado.id,
-          nome: afiliadoPessoa?.nome || 'N/A',
-          email: afiliadoPessoa?.email || 'N/A',
+          afiliadoId: afiliado.afiliado_id,
+          padrinhoId: afiliado.padrinho_id,
+          nome: afiliado.nome || 'N/A',
+          email: afiliado.email || 'N/A',
+          cpf: afiliado.cpf,
+          dataNascimento: afiliado.data_nascimento,
+          sexo: afiliado.sexo,
+          cidade: afiliado.cidade,
+          uf: afiliado.uf,
+          nichoAtuacao: afiliado.nicho_atuacao,
+          telefone: afiliado.telefone,
           status: afiliado.status,
           dataCadastro: afiliado.data_cadastro,
-          dataAprovacao: afiliado.data_aprovacao,
+          dataEmail: afiliado.data_email,
           padrinhoNome: padrinhoPessoa?.nome || 'N/A',
+          padrinhoDataUltimoPagamento: padrinhoPessoa?.data_ultimo_pagamento || null,
         };
       })
     );

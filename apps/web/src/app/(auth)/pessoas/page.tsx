@@ -47,6 +47,15 @@ interface PessoaFisica {
   ativo: boolean;
   created_at: string;
   updated_at: string;
+  // Campos financeiros e administrativos
+  tipo_assinatura: string | null;
+  valor_ultimo_pagamento: number | null;
+  data_ultimo_pagamento: string | null;
+  data_vencimento: string | null;
+  data_primeiro_contato: string | null;
+  data_ultimo_envio: string | null;
+  cartao: boolean;
+  escolaridade: string | null;
 }
 
 async function fetchPessoas(limit: number, search: string): Promise<PessoaFisica[]> {
@@ -97,12 +106,37 @@ export default function PessoasPage() {
     ativo: true,
     convites_enviados: 0,
     convites_usados: 0,
+    tipo_assinatura: '',
+    valor_ultimo_pagamento: '',
+    data_ultimo_pagamento: '',
+    data_vencimento: '',
+    data_primeiro_contato: '',
+    data_ultimo_envio: '',
+    cartao: false,
+    escolaridade: '',
   });
 
   const { data: pessoas, isLoading, refetch } = useQuery({
     queryKey: ['pessoas', limit, searchTerm],
     queryFn: () => fetchPessoas(limit, searchTerm),
   });
+
+  // Helper function to format dates for input[type="date"]
+  const formatDateForInput = (dateString: string | null): string => {
+    if (!dateString) return '';
+    try {
+      // Extract just the date part (YYYY-MM-DD) from ISO string or timestamp
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch {
+      return '';
+    }
+  };
 
   const handleEditar = (pessoa: PessoaFisica) => {
     try {
@@ -112,7 +146,7 @@ export default function PessoasPage() {
         nome: pessoa.nome || '',
         email: pessoa.email || '',
         cpf: pessoa.cpf || '',
-        data_nascimento: pessoa.data_nascimento || '',
+        data_nascimento: formatDateForInput(pessoa.data_nascimento),
         sexo: pessoa.sexo || '',
         cidade: pessoa.cidade || '',
         uf: pessoa.uf || '',
@@ -120,6 +154,14 @@ export default function PessoasPage() {
         ativo: pessoa.ativo ?? true,
         convites_enviados: pessoa.convites_enviados || 0,
         convites_usados: pessoa.convites_usados || 0,
+        tipo_assinatura: pessoa.tipo_assinatura || '',
+        valor_ultimo_pagamento: pessoa.valor_ultimo_pagamento?.toString() || '',
+        data_ultimo_pagamento: formatDateForInput(pessoa.data_ultimo_pagamento),
+        data_vencimento: formatDateForInput(pessoa.data_vencimento),
+        data_primeiro_contato: formatDateForInput(pessoa.data_primeiro_contato),
+        data_ultimo_envio: formatDateForInput(pessoa.data_ultimo_envio),
+        cartao: pessoa.cartao || false,
+        escolaridade: pessoa.escolaridade || '',
       });
       setShowEditDialog(true);
     } catch (error) {
@@ -155,7 +197,16 @@ export default function PessoasPage() {
       const res = await fetch(`/api/pessoas-fisicas/${selectedPessoa.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          valor_ultimo_pagamento: formData.valor_ultimo_pagamento ? parseFloat(formData.valor_ultimo_pagamento) : null,
+          tipo_assinatura: formData.tipo_assinatura || null,
+          data_ultimo_pagamento: formData.data_ultimo_pagamento || null,
+          data_vencimento: formData.data_vencimento || null,
+          data_primeiro_contato: formData.data_primeiro_contato || null,
+          data_ultimo_envio: formData.data_ultimo_envio || null,
+          escolaridade: formData.escolaridade || null,
+        }),
       });
 
       console.log('📥 Resposta recebida:', { status: res.status, ok: res.ok });
@@ -229,7 +280,9 @@ export default function PessoasPage() {
               <TableHead>Email</TableHead>
               <TableHead>CPF</TableHead>
               <TableHead>Cidade/UF</TableHead>
-              <TableHead>Nicho</TableHead>
+              <TableHead>Tipo Assinatura</TableHead>
+              <TableHead className="text-right">Valor</TableHead>
+              <TableHead>Último Pagamento</TableHead>
               <TableHead className="text-center">Convites</TableHead>
               <TableHead className="text-center">Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -238,7 +291,7 @@ export default function PessoasPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-gray-500">
+                <TableCell colSpan={10} className="text-center text-gray-500">
                   Carregando...
                 </TableCell>
               </TableRow>
@@ -253,7 +306,33 @@ export default function PessoasPage() {
                       ? `${pessoa.cidade}, ${pessoa.uf}`
                       : pessoa.cidade || '-'}
                   </TableCell>
-                  <TableCell>{pessoa.nicho_atuacao || '-'}</TableCell>
+                  <TableCell>
+                    {pessoa.tipo_assinatura ? (
+                      <Badge variant="outline" className="capitalize">
+                        {pessoa.tipo_assinatura}
+                      </Badge>
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {pessoa.valor_ultimo_pagamento ? (
+                      <span className="font-medium text-green-600">
+                        R$ {parseFloat(pessoa.valor_ultimo_pagamento.toString()).toFixed(2)}
+                      </span>
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {pessoa.data_ultimo_pagamento ? (
+                      <span className="text-sm">
+                        {new Date(pessoa.data_ultimo_pagamento).toLocaleDateString('pt-BR')}
+                      </span>
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
                   <TableCell className="text-center">
                     <span className="text-xs">
                       {pessoa.convites_enviados}E / {pessoa.convites_usados}U
@@ -278,7 +357,7 @@ export default function PessoasPage() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-gray-500">
+                <TableCell colSpan={10} className="text-center text-gray-500">
                   Nenhuma pessoa encontrada
                 </TableCell>
               </TableRow>
@@ -494,6 +573,138 @@ export default function PessoasPage() {
                   <SelectContent>
                     <SelectItem value="true">Ativo</SelectItem>
                     <SelectItem value="false">Inativo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Dados Financeiros */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-gray-900 border-b pb-2">
+                Dados Financeiros
+              </h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="tipo_assinatura">Tipo de Assinatura</Label>
+                  <Select
+                    value={formData.tipo_assinatura || undefined}
+                    onValueChange={(v) => updateFormData('tipo_assinatura', v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="mensal">Mensal</SelectItem>
+                      <SelectItem value="trimestral">Trimestral</SelectItem>
+                      <SelectItem value="semestral">Semestral</SelectItem>
+                      <SelectItem value="anual">Anual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="valor_ultimo_pagamento">Valor Último Pagamento (R$)</Label>
+                  <Input
+                    id="valor_ultimo_pagamento"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.valor_ultimo_pagamento}
+                    onChange={(e) => updateFormData('valor_ultimo_pagamento', e.target.value)}
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="data_ultimo_pagamento">Data Último Pagamento</Label>
+                  <Input
+                    id="data_ultimo_pagamento"
+                    type="date"
+                    value={formData.data_ultimo_pagamento}
+                    onChange={(e) => updateFormData('data_ultimo_pagamento', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="data_vencimento">Data de Vencimento</Label>
+                  <Input
+                    id="data_vencimento"
+                    type="date"
+                    value={formData.data_vencimento}
+                    onChange={(e) => updateFormData('data_vencimento', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cartao">Possui Cartão</Label>
+                  <Select
+                    value={formData.cartao.toString()}
+                    onValueChange={(v) => updateFormData('cartao', v === 'true')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Sim</SelectItem>
+                      <SelectItem value="false">Não</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Datas Administrativas */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-gray-900 border-b pb-2">
+                Datas Administrativas
+              </h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="data_primeiro_contato">Data Primeiro Contato</Label>
+                  <Input
+                    id="data_primeiro_contato"
+                    type="date"
+                    value={formData.data_primeiro_contato}
+                    onChange={(e) => updateFormData('data_primeiro_contato', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="data_ultimo_envio">Data Último Envio</Label>
+                  <Input
+                    id="data_ultimo_envio"
+                    type="date"
+                    value={formData.data_ultimo_envio}
+                    onChange={(e) => updateFormData('data_ultimo_envio', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Outros Dados */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-gray-900 border-b pb-2">
+                Outros Dados
+              </h3>
+
+              <div className="space-y-2">
+                <Label htmlFor="escolaridade">Escolaridade</Label>
+                <Select
+                  value={formData.escolaridade || undefined}
+                  onValueChange={(v) => updateFormData('escolaridade', v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Fundamental">Ensino Fundamental</SelectItem>
+                    <SelectItem value="Médio">Ensino Médio</SelectItem>
+                    <SelectItem value="Superior">Ensino Superior</SelectItem>
+                    <SelectItem value="Pós-graduação">Pós-graduação</SelectItem>
+                    <SelectItem value="Mestrado">Mestrado</SelectItem>
+                    <SelectItem value="Doutorado">Doutorado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -8,13 +8,12 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const dias = parseInt(searchParams.get('dias') || '30'); // Default last 30 days
 
-    // Get all used códigos with data_atribuicao
+    // Get all used códigos with data (data IS NOT NULL means used)
     const { data: codigos, error } = await supabaseAdmin
       .from('codigos_convite')
-      .select('data_atribuicao')
-      .eq('usado', true)
-      .not('data_atribuicao', 'is', null)
-      .order('data_atribuicao', { ascending: false });
+      .select('data')
+      .not('data', 'is', null)
+      .order('data', { ascending: false });
 
     if (error) throw error;
 
@@ -22,8 +21,8 @@ export async function GET(request: Request) {
     const statsMap = new Map<string, number>();
 
     codigos?.forEach((codigo) => {
-      if (codigo.data_atribuicao) {
-        const date = new Date(codigo.data_atribuicao);
+      if (codigo.data) {
+        const date = new Date(codigo.data);
         const dateKey = date.toISOString().split('T')[0]; // YYYY-MM-DD
 
         statsMap.set(dateKey, (statsMap.get(dateKey) || 0) + 1);

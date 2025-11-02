@@ -28,6 +28,14 @@ export async function PUT(
       ativo,
       convites_enviados,
       convites_usados,
+      tipo_assinatura,
+      valor_ultimo_pagamento,
+      data_ultimo_pagamento,
+      data_vencimento,
+      data_primeiro_contato,
+      data_ultimo_envio,
+      cartao,
+      escolaridade,
     } = body;
 
     // Validações básicas
@@ -101,6 +109,14 @@ export async function PUT(
       ativo: ativo !== undefined ? ativo : true,
       convites_enviados: convites_enviados !== undefined ? convites_enviados : 0,
       convites_usados: convites_usados !== undefined ? convites_usados : 0,
+      tipo_assinatura: tipo_assinatura || null,
+      valor_ultimo_pagamento: valor_ultimo_pagamento !== undefined ? valor_ultimo_pagamento : null,
+      data_ultimo_pagamento: data_ultimo_pagamento || null,
+      data_vencimento: data_vencimento || null,
+      data_primeiro_contato: data_primeiro_contato || null,
+      data_ultimo_envio: data_ultimo_envio || null,
+      cartao: cartao !== undefined ? cartao : false,
+      escolaridade: escolaridade || null,
       updated_at: new Date().toISOString(),
     };
 

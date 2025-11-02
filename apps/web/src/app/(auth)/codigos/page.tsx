@@ -46,7 +46,6 @@ interface Codigo {
   email: string | null;
   usado: boolean;
   data_atribuicao: string | null;
-  data_expiracao: string | null;
   created_at: string;
 }
 
@@ -273,15 +272,14 @@ export default function CodigosPage() {
               <TableHead>Código</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Email Vinculado</TableHead>
-              <TableHead>Data Atribuição</TableHead>
-              <TableHead>Data Expiração</TableHead>
-              <TableHead>Criado Em</TableHead>
+              <TableHead>Data de Uso</TableHead>
+              <TableHead>Atualizado Em</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-gray-500">
+                <TableCell colSpan={5} className="text-center text-gray-500">
                   Carregando...
                 </TableCell>
               </TableRow>
@@ -303,18 +301,15 @@ export default function CodigosPage() {
                       : '-'}
                   </TableCell>
                   <TableCell>
-                    {codigo.data_expiracao
-                      ? new Date(codigo.data_expiracao).toLocaleDateString('pt-BR')
+                    {codigo.created_at
+                      ? new Date(codigo.created_at).toLocaleDateString('pt-BR')
                       : '-'}
-                  </TableCell>
-                  <TableCell>
-                    {new Date(codigo.created_at).toLocaleDateString('pt-BR')}
                   </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-gray-500">
+                <TableCell colSpan={5} className="text-center text-gray-500">
                   Nenhum código encontrado
                 </TableCell>
               </TableRow>

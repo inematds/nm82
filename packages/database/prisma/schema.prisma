@@ -23,7 +23,7 @@ enum Role {
 
 model UserRole {
   id        String   @id @default(uuid())
-  userId    String   // FK to Supabase Auth user.id
+  userId    String // FK to Supabase Auth user.id
   role      Role
   createdAt DateTime @default(now())
 
@@ -45,98 +45,115 @@ model PessoaFisica {
   cidade               String?
   uf                   String?   @db.VarChar(2)
   nichoAtuacao         String?   @map("nicho_atuacao")
+  escolaridade         String?
+  dataUltimoPagamento  DateTime? @map("data_ultimo_pagamento") @db.Date
+  valorUltimoPagamento Decimal?  @map("valor_ultimo_pagamento") @db.Decimal(10, 2)
+  tipoAssinatura       String?   @map("tipo_assinatura")
+  dataVencimento       DateTime? @map("data_vencimento") @db.Date
+  dataPrimeiroContato  DateTime? @map("data_primeiro_contato")
+  dataCadastro         DateTime? @map("data_cadastro")
+  dataUltimoEnvio      DateTime? @map("data_ultimo_envio")
+  convitesDtatual      DateTime? @map("convites_dtatual")
   convitesEnviados     Int       @default(0) @map("convites_enviados")
   convitesUsados       Int       @default(0) @map("convites_usados")
   convitesDisponiveis  Int       @default(5) @map("convites_disponiveis")
+  cartao               Boolean   @default(false)
   ativo                Boolean   @default(true)
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
+  atualizadoEm         DateTime  @updatedAt @map("atualizado_em")
+  createdAt            DateTime? @map("created_at")
+  updatedAt            DateTime? @map("updated_at")
 
   // Relations
-  afiliadosComoPadrinho Afiliado[] @relation("Padrinho")
-  afiliadoComoAfiliado  Afiliado?  @relation("Afiliado")
+  afiliadosComoPadrinho Afiliado[]  @relation("Padrinho")
+  pagamentos            Pagamento[]
 
   @@index([email])
   @@index([ativo])
   @@map("pessoas_fisicas")
 }
 
-enum AfiliadoStatus {
-  PENDENTE          // Aguardando processamento automático
-  ENVIADO           // Aprovado e email enviado
-  JA_CADASTRADO     // Email já existe
-  SEM_PADRINHO      // Padrinho não encontrado
-  SEM_CONVITE       // Padrinho sem convites disponíveis
-  APROVADO          // (Deprecated - usar ENVIADO)
-  REJEITADO         // (Deprecated - usar JA_CADASTRADO, SEM_PADRINHO ou SEM_CONVITE)
-}
-
 model Afiliado {
-  id              String          @id @default(uuid())
-  afiliadoId      String          @unique @map("afiliado_id")
-  padrinhoId      String          @map("padrinho_id")
-  status          AfiliadoStatus  @default(PENDENTE)
-  motivoRejeicao  String?         @map("motivo_rejeicao") @db.Text
-  dataCadastro    DateTime        @default(now()) @map("data_cadastro")
-  dataAprovacao   DateTime?       @map("data_aprovacao")
-  emailEnviado    Boolean         @default(false) @map("email_enviado")
-  codigoConviteId String?         @unique @map("codigo_convite_id")
+  id           String    @id @default(uuid())
+  afiliadoId   String?   @map("afiliado_id")
+  padrinhoId   String    @map("padrinho_id")
+  dataCadastro DateTime  @map("data_cadastro")
+  emailEnviado Boolean   @default(false) @map("email_enviado")
+  dataEmail    DateTime? @map("data_email")
+  status       String // "Enviado", "Pendente", etc.
+
+  // Dados denormalizados do afiliado
+  nome           String?
+  email          String?
+  cpf            String?
+  dataNascimento DateTime? @map("data_nascimento") @db.Date
+  sexo           String?
+  cidade         String?
+  uf             String?   @db.VarChar(2)
+  nichoAtuacao   String?   @map("nicho_atuacao")
+  telefone       String?
 
   // Relations
-  afiliado      PessoaFisica   @relation("Afiliado", fields: [afiliadoId], references: [id], onDelete: Cascade)
-  padrinho      PessoaFisica   @relation("Padrinho", fields: [padrinhoId], references: [id], onDelete: Restrict)
-  codigoConvite CodigoConvite? @relation(fields: [codigoConviteId], references: [id])
+  padrinho PessoaFisica @relation("Padrinho", fields: [padrinhoId], references: [id], onDelete: Restrict)
 
   @@index([padrinhoId])
   @@index([status])
   @@index([dataCadastro])
+  @@index([email])
   @@map("afiliados")
 }
 
 model CodigoConvite {
-  id              String    @id @default(uuid())
-  codigo          String    @unique @db.VarChar(8)
-  email           String?
-  usado           Boolean   @default(false)
-  dataAtribuicao  DateTime? @map("data_atribuicao")
-  dataExpiracao   DateTime? @map("data_expiracao")
-  createdAt       DateTime  @default(now()) @map("created_at")
+  id           String    @id @default(uuid())
+  codigo       String    @unique
+  email        String?
+  data         DateTime? @db.Date
+  atualizadoEm DateTime  @updatedAt @map("atualizado_em")
 
-  // Relations
-  afiliado Afiliado?
-
-  @@index([usado])
-  @@index([dataExpiracao])
+  @@index([email])
+  @@index([data])
   @@map("codigos_convite")
 }
 
-enum TipoPagamento {
-  MENSAL
-  ANUAL
-}
-
-enum StatusPagamento {
-  PENDENTE
-  CONFIRMADO
-  REJEITADO
-}
-
 model Pagamento {
-  id              String          @id @default(uuid())
-  email           String
-  valor           Decimal         @db.Decimal(10, 2)
-  dataPagamento   DateTime        @map("data_pagamento")
-  tipoPagamento   TipoPagamento   @map("tipo_pagamento")
-  status          StatusPagamento @default(PENDENTE)
-  comprovante     String?         @db.Text
-  observacoes     String?         @db.Text
-  confirmedBy     String?         @map("confirmed_by") // User ID
-  createdAt       DateTime        @default(now()) @map("created_at")
+  id                 String    @id @default(uuid())
+  pessoaId           String    @map("pessoa_id")
+  dataPagamento      DateTime  @map("data_pagamento") @db.Date
+  valor              Decimal   @db.Decimal(10, 2)
+  tipoAssinatura     String    @map("tipo_assinatura") // "mensal", "anual"
+  tipoPagamento      String    @map("tipo_pagamento") // "PIX", "Boleto", "Cartão", etc.
+  dataVencimento     DateTime? @map("data_vencimento") @db.Date
+  arquivoComprovante String?   @map("arquivo_comprovante")
+  origemAnexoId      String?   @map("origem_anexo_id")
+  criadoEm           DateTime  @map("criado_em")
+
+  // Campos denormalizados
+  Nome  String? // Com N maiúsculo (como no banco)
+  CPF   String? // Com CPF maiúsculo (como no banco)
+  email String?
+
+  // Relations
+  pessoa PessoaFisica @relation(fields: [pessoaId], references: [id], onDelete: Cascade)
+
+  @@index([pessoaId])
+  @@index([email])
+  @@index([dataPagamento])
+  @@map("pagamentos")
+}
+
+// Tabela de integração com sistema de pagamentos (Stripe ou similar)
+// Importada de sistema externo
+model Cartao {
+  id           String   @id // ID externo (ex: cus_Ra1ivvwRHc3m12)
+  email        String   @map("Email") // Mantém case original
+  name         String   @map("Name")
+  created      DateTime @map("Created (UTC)")
+  status       String   @map("Status") // "active", "inactive", etc.
+  totalSpend   Decimal  @map("Total Spend") @db.Decimal(10, 2)
+  paymentCount Int      @map("Payment Count")
 
   @@index([email])
   @@index([status])
-  @@index([dataPagamento])
-  @@map("pagamentos")
+  @@map("cartoes")
 }
 
 // ==========================================
@@ -144,16 +161,16 @@ model Pagamento {
 // ==========================================
 
 model Email {
-  messageId     String             @id @map("message_id")
-  threadId      String?            @map("thread_id")
-  from          String
-  to            String
-  subject       String
-  bodyText      String?            @map("body_text") @db.Text
-  bodyHtml      String?            @map("body_html") @db.Text
-  dateReceived  DateTime           @map("date_received")
-  labels        String[]
-  processedAt   DateTime           @default(now()) @map("processed_at")
+  messageId    String   @id @map("message_id")
+  threadId     String?  @map("thread_id")
+  from         String
+  to           String
+  subject      String
+  bodyText     String?  @map("body_text") @db.Text
+  bodyHtml     String?  @map("body_html") @db.Text
+  dateReceived DateTime @map("date_received")
+  labels       String[]
+  processedAt  DateTime @default(now()) @map("processed_at")
 
   // Relations
   attachments EmailAttachment[]
@@ -194,14 +211,14 @@ enum TipoNotificacao {
 }
 
 model Notification {
-  id        String           @id @default(uuid())
-  userId    String           @map("user_id")
+  id        String          @id @default(uuid())
+  userId    String          @map("user_id")
   tipo      TipoNotificacao
   titulo    String
-  mensagem  String           @db.Text
-  lida      Boolean          @default(false)
+  mensagem  String          @db.Text
+  lida      Boolean         @default(false)
   link      String?
-  createdAt DateTime         @default(now()) @map("created_at")
+  createdAt DateTime        @default(now()) @map("created_at")
 
   @@index([userId, lida])
   @@index([createdAt])
@@ -230,17 +247,17 @@ model AuditLog {
 // ==========================================
 
 model EmailTemplate {
-  id              String   @id @default(uuid())
-  nome            String
-  codigo          String   @unique @db.VarChar(100)
-  assunto         String   @db.Text
-  corpo           String   @db.Text
-  variaveis       Json     @default("[]")
-  remetentNome    String?  @map("remetente_nome")
-  remetenteEmail  String?  @map("remetente_email")
-  ativo           Boolean  @default(true)
-  criadoEm        DateTime @default(now()) @map("criado_em")
-  atualizadoEm    DateTime @updatedAt @map("atualizado_em")
+  id             String   @id @default(uuid())
+  nome           String
+  codigo         String   @unique @db.VarChar(100)
+  assunto        String   @db.Text
+  corpo          String   @db.Text
+  variaveis      Json     @default("[]")
+  remetentNome   String?  @map("remetente_nome")
+  remetenteEmail String?  @map("remetente_email")
+  ativo          Boolean  @default(true)
+  criadoEm       DateTime @default(now()) @map("criado_em")
+  atualizadoEm   DateTime @updatedAt @map("atualizado_em")
 
   @@index([codigo])
   @@index([ativo])
@@ -248,15 +265,15 @@ model EmailTemplate {
 }
 
 model ConfiguracaoEmail {
-  id           String   @id @default(uuid())
-  chave        String   @unique @db.VarChar(100)
-  valor        String   @db.Text
-  tipo         String   @default("string") @db.VarChar(50)
-  descricao    String?  @db.Text
-  grupo        String   @default("geral") @db.VarChar(100)
-  criptografado Boolean @default(false)
-  criadoEm     DateTime @default(now()) @map("criado_em")
-  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+  id            String   @id @default(uuid())
+  chave         String   @unique @db.VarChar(100)
+  valor         String   @db.Text
+  tipo          String   @default("string") @db.VarChar(50)
+  descricao     String?  @db.Text
+  grupo         String   @default("geral") @db.VarChar(100)
+  criptografado Boolean  @default(false)
+  criadoEm      DateTime @default(now()) @map("criado_em")
+  atualizadoEm  DateTime @updatedAt @map("atualizado_em")
 
   @@index([chave])
   @@index([grupo])
@@ -270,20 +287,20 @@ enum StatusEmail {
 }
 
 model LogEmail {
-  id                 String      @id @default(uuid())
-  templateCodigo     String?     @map("template_codigo") @db.VarChar(100)
-  destinatarioEmail  String      @map("destinatario_email")
-  destinatarioNome   String?     @map("destinatario_nome")
-  assunto            String      @db.Text
-  corpo              String      @db.Text
-  variaveis          Json?
-  status             StatusEmail @default(PENDENTE)
-  erro               String?     @db.Text
-  tentativas         Int         @default(0)
-  afiliadoId         String?     @map("afiliado_id")
-  padrinhoId         String?     @map("padrinho_id")
-  enviadoEm          DateTime?   @map("enviado_em")
-  criadoEm           DateTime    @default(now()) @map("criado_em")
+  id                String      @id @default(uuid())
+  templateCodigo    String?     @map("template_codigo") @db.VarChar(100)
+  destinatarioEmail String      @map("destinatario_email")
+  destinatarioNome  String?     @map("destinatario_nome")
+  assunto           String      @db.Text
+  corpo             String      @db.Text
+  variaveis         Json?
+  status            StatusEmail @default(PENDENTE)
+  erro              String?     @db.Text
+  tentativas        Int         @default(0)
+  afiliadoId        String?     @map("afiliado_id")
+  padrinhoId        String?     @map("padrinho_id")
+  enviadoEm         DateTime?   @map("enviado_em")
+  criadoEm          DateTime    @default(now()) @map("criado_em")
 
   @@index([status])
   @@index([templateCodigo])
