@@ -5,14 +5,11 @@ export type {
   PessoaFisica,
   Afiliado,
   CodigoConvite,
-  Pagamento,
   UserRole,
   Notification,
   AuditLog,
   Role,
   AfiliadoStatus,
-  TipoPagamento,
-  StatusPagamento,
   TipoNotificacao,
 } from '@nm82/database';
 

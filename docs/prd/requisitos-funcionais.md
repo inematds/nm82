@@ -34,12 +34,11 @@
 **Descrição**: Painel central com métricas e operações principais.
 
 **Critérios de Aceitação**:
-- [ ] Como Admin, vejo cards com: total afiliados, total padrinhos, receita total, convites disponíveis
+- [ ] Como Admin, vejo cards com: total afiliados, total padrinhos, convites disponíveis
 - [ ] Como Admin, vejo gráfico de novos afiliados (últimos 30 dias)
-- [ ] Como Admin, vejo gráfico de receita por semana (12 semanas)
 - [ ] Como Admin, vejo tabela com últimos 10 afiliados cadastrados
 - [ ] Como Admin, vejo tabela com top 10 padrinhos ativos
-- [ ] Como Admin, vejo alertas (pagamentos pendentes, afiliados sem padrinho, códigos expirados)
+- [ ] Como Admin, vejo alertas (afiliados sem padrinho, códigos expirados)
 - [ ] Como Admin, posso clicar em métricas para filtrar dados relacionados
 - [ ] Como sistema, atualizo dados a cada 30 segundos
 
@@ -48,7 +47,6 @@
 |---------|---------|-------|
 | Total Afiliados | COUNT(afiliados) | afiliados |
 | Total Padrinhos | COUNT(DISTINCT padrinho_id) | afiliados |
-| Receita Total | SUM(pagamentos.valor) | pagamentos |
 | Convites Disponíveis | SUM(pessoas_fisicas.convites_disponiveis) | pessoas_fisicas |
 
 ---
@@ -92,29 +90,27 @@
 **Critérios de Aceitação**:
 - [ ] Como Admin, vejo lista paginada de afiliados (20/página)
 - [ ] Como Admin, posso buscar afiliado por nome, email, padrinho
-- [ ] Como Admin, posso filtrar por status: pendente, aprovado, rejeitado
+- [ ] Como Admin, posso filtrar por status: PENDENTE, ENVIADO, JA_CADASTRADO, SEM_PADRINHO, SEM_CONVITE
 - [ ] Como Admin, posso ordenar por: data cadastro, nome, status
 - [ ] Como Admin, posso aprovar afiliado pendente (bulk ou individual)
-- [ ] Como Admin, posso rejeitar afiliado com motivo
 - [ ] Como Admin, posso editar dados de um afiliado
 - [ ] Como Admin, posso alterar padrinho de um afiliado
 - [ ] Como Admin, vejo dados do padrinho vinculado
 - [ ] Como Admin, posso exportar lista de afiliados (CSV)
 
 **Fluxo de Aprovação**:
-1. Afiliado se cadastra via link de convite → status "pendente"
+1. Afiliado se cadastra via link de convite → status "PENDENTE"
 2. Admin revisa cadastro
 3. Admin aprova:
-   - Status → "aprovado"
+   - Status → "ENVIADO"
    - Sistema pega código disponível
    - Sistema atribui código ao email do afiliado
    - Sistema envia email com link Telegram
    - Sistema incrementa `convites_usados` do padrinho
    - Sistema notifica padrinho
-4. Admin rejeita:
-   - Status → "rejeitado"
-   - Sistema registra motivo
-   - Sistema notifica afiliado
+4. Se padrinho não existir: status → "SEM_PADRINHO"
+5. Se padrinho sem convites: status → "SEM_CONVITE"
+6. Se email já cadastrado: status → "JA_CADASTRADO"
 
 ---
 
@@ -142,35 +138,7 @@
 
 ---
 
-### RF-006: Gestão de Pagamentos
-
-**Prioridade**: 🔴 CRÍTICA
-**MVP**: ⏭️ Fase 3
-
-**Descrição**: Registro, confirmação e reconciliação de pagamentos.
-
-**Critérios de Aceitação**:
-- [ ] Como Admin, vejo lista de pagamentos com filtros (status, período, tipo)
-- [ ] Como Admin, posso registrar pagamento manualmente
-- [ ] Como Admin, posso fazer upload de comprovante (PDF/imagem)
-- [ ] Como Admin, posso confirmar/rejeitar pagamento pendente
-- [ ] Como Admin, vejo histórico de pagamentos por email
-- [ ] Como Admin, posso vincular pagamento a pessoa_fisica
-- [ ] Como Admin, vejo alertas de pagamentos duplicados
-- [ ] Como sistema, integro com webhook do n8n para pagamentos processados via email
-
-**Campos**:
-- Email (obrigatório)
-- Valor (obrigatório)
-- Data do pagamento (obrigatório)
-- Tipo: mensal/anual (calculado automaticamente)
-- Status: pendente/confirmado/rejeitado
-- Comprovante (anexo)
-- Observações
-
----
-
-### RF-007: Relatórios e Analytics
+### RF-006: Relatórios e Analytics
 
 **Prioridade**: 🟡 ALTA
 **MVP**: ⏭️ Fase 4
@@ -180,7 +148,6 @@
 **Critérios de Aceitação**:
 - [ ] Como Admin, vejo relatório de conversão do funil (cadastros → aprovações → ativos)
 - [ ] Como Admin, vejo relatório de performance de padrinhos (ranking)
-- [ ] Como Admin, vejo relatório financeiro (receita, LTV, churn)
 - [ ] Como Admin, vejo relatório de engajamento (uso de convites, tempo de resposta)
 - [ ] Como Admin, posso filtrar relatórios por período customizado
 - [ ] Como Admin, posso exportar qualquer relatório em CSV/Excel
@@ -198,11 +165,32 @@
    - Taxa de aprovação dos seus afiliados
    - Tempo médio de cadastro dos convidados
 
-3. **Financeiro**
-   - Receita total/mensal/anual
-   - MRR (Monthly Recurring Revenue)
-   - Churn rate
-   - LTV (Lifetime Value)
+---
+
+### RF-007: Sistema de Notificações
+
+**Prioridade**: 🟡 ALTA
+**MVP**: ⏭️ Fase 4
+
+**Descrição**: Central de notificações in-app e via email.
+
+**Critérios de Aceitação**:
+- [ ] Como usuário, vejo badge com quantidade de notificações não lidas
+- [ ] Como usuário, posso abrir central de notificações
+- [ ] Como usuário, posso marcar notificações como lidas
+- [ ] Como usuário, posso configurar preferências (quais receber)
+- [ ] Como Padrinho, recebo notificação quando afiliado é aprovado
+- [ ] Como Afiliado, recebo notificação quando sou aprovado
+- [ ] Como Admin, recebo notificação de novos cadastros pendentes
+- [ ] Como sistema, envio email para notificações críticas
+
+**Tipos de Notificações**:
+| Evento | Destinatário | In-App | Email |
+|--------|--------------|--------|-------|
+| Afiliado cadastrado | Admin | ✅ | ⚠️ |
+| Afiliado aprovado | Afiliado | ✅ | ✅ |
+| Afiliado aprovado | Padrinho | ✅ | ✅ |
+| Convites esgotados | Padrinho | ✅ | ✅ |
 
 ---
 
@@ -230,35 +218,7 @@
 
 ---
 
-### RF-009: Sistema de Notificações
-
-**Prioridade**: 🟡 ALTA
-**MVP**: ⏭️ Fase 4
-
-**Descrição**: Central de notificações in-app e via email.
-
-**Critérios de Aceitação**:
-- [ ] Como usuário, vejo badge com quantidade de notificações não lidas
-- [ ] Como usuário, posso abrir central de notificações
-- [ ] Como usuário, posso marcar notificações como lidas
-- [ ] Como usuário, posso configurar preferências (quais receber)
-- [ ] Como Padrinho, recebo notificação quando afiliado é aprovado
-- [ ] Como Afiliado, recebo notificação quando sou aprovado
-- [ ] Como Admin, recebo notificação de novos cadastros pendentes
-- [ ] Como sistema, envio email para notificações críticas
-
-**Tipos de Notificações**:
-| Evento | Destinatário | In-App | Email |
-|--------|--------------|--------|-------|
-| Afiliado cadastrado | Admin | ✅ | ⚠️ |
-| Afiliado aprovado | Afiliado | ✅ | ✅ |
-| Afiliado aprovado | Padrinho | ✅ | ✅ |
-| Convites esgotados | Padrinho | ✅ | ✅ |
-| Pagamento confirmado | Admin | ✅ | ❌ |
-
----
-
-### RF-010: Cadastro Público de Afiliado
+### RF-009: Cadastro Público de Afiliado
 
 **Prioridade**: 🔴 CRÍTICA
 **MVP**: ✅ Fase 1 (Migração do atual)

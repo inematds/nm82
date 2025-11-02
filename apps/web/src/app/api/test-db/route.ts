@@ -43,12 +43,6 @@ export async function GET() {
       results.errors.push(`codigos_convite: ${error.message}`);
     }
 
-    try {
-      results.tables.pagamentos = await prisma.pagamento.count();
-    } catch (error: any) {
-      results.errors.push(`pagamentos: ${error.message}`);
-    }
-
     // 3. Check admin users
     try {
       const adminRoles = await prisma.userRole.findMany({

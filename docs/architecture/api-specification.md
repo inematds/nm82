@@ -114,32 +114,6 @@ DELETE /api/codigos/:id/liberar
   Side Effects: Reset email, usado = false
 ```
 
-### Pagamentos
-
-```yaml
-GET /api/pagamentos
-  Query: { page, limit, status, email, dataInicio, dataFim }
-  Returns: { pagamentos: Pagamento[], total }
-  Auth: ADMIN
-
-POST /api/pagamentos
-  Body: { email, valor, dataPagamento, comprovante?, observacoes? }
-  Returns: { pagamento: Pagamento }
-  Auth: ADMIN
-
-POST /api/pagamentos/:id/confirmar
-  Body: { observacoes?: string }
-  Returns: { pagamento: Pagamento }
-  Auth: ADMIN
-  Audit: Log confirmation
-
-POST /api/pagamentos/:id/rejeitar
-  Body: { observacoes: string }
-  Returns: { pagamento: Pagamento }
-  Auth: ADMIN
-  Audit: Log rejection
-```
-
 ### Dashboard & Analytics
 
 ```yaml
@@ -147,7 +121,6 @@ GET /api/dashboard/metrics
   Returns: {
     totalAfiliados: number,
     totalPadrinhos: number,
-    receitaTotal: number,
     convitesDisponiveis: number,
     afiliadosPendentes: number
   }
@@ -156,11 +129,6 @@ GET /api/dashboard/metrics
 GET /api/dashboard/afiliados-por-dia
   Query: { dias: number } // default 30
   Returns: { date: string, count: number }[]
-  Auth: ADMIN
-
-GET /api/dashboard/receita-por-semana
-  Query: { semanas: number } // default 12
-  Returns: { week: string, receita: number }[]
   Auth: ADMIN
 
 GET /api/dashboard/ranking-padrinhos
@@ -195,20 +163,31 @@ PATCH /api/notifications/ler-todas
   Auth: Required
 ```
 
-### Webhooks (n8n integration)
+### Email Templates
 
 ```yaml
-POST /api/webhooks/email-processado
-  Body: { messageId, from, subject, attachments }
-  Returns: { success: true }
-  Auth: Webhook secret (env var)
-  Side Effects: Process payment info, create Pagamento record
+GET /api/email-templates
+  Returns: { templates: EmailTemplate[] }
+  Auth: ADMIN
 
-POST /api/webhooks/pagamento-confirmado
-  Body: { pagamentoId, email, valor }
-  Returns: { success: true }
-  Auth: Webhook secret
-  Side Effects: Update Pagamento status
+GET /api/email-templates/:id
+  Returns: { template: EmailTemplate }
+  Auth: ADMIN
+
+POST /api/email-templates
+  Body: { nome, assunto, corpo, variaveis }
+  Returns: { template: EmailTemplate }
+  Auth: ADMIN
+
+PATCH /api/email-templates/:id
+  Body: Partial<EmailTemplate>
+  Returns: { template: EmailTemplate }
+  Auth: ADMIN
+
+GET /api/email-logs
+  Query: { page, limit, status, para, dataInicio, dataFim }
+  Returns: { logs: LogEmail[], total }
+  Auth: ADMIN
 ```
 
 ## Request/Response Examples

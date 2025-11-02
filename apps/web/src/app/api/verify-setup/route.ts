@@ -22,10 +22,8 @@ export async function GET() {
       'pessoas_fisicas',
       'afiliados',
       'codigos_convite',
-      'pagamentos',
       'notifications',
       'audit_logs',
-      'emails',
     ];
 
     const tableCounts: Record<string, number> = {};
@@ -57,7 +55,7 @@ export async function GET() {
       report.checks.push({
         name: 'Database Schema',
         status: 'ok',
-        message: 'All 8 required tables exist',
+        message: 'All 6 required tables exist',
         details: tableCounts,
       });
     }

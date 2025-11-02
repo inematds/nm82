@@ -29,7 +29,7 @@ model Afiliado {
   id            String    @id @default(uuid())
   afiliado_id   String    @unique
   padrinho_id   String
-  status        String    // "pendente", "aprovado", "rejeitado"
+  status        String    // "PENDENTE", "ENVIADO", "JA_CADASTRADO", "SEM_PADRINHO", "SEM_CONVITE", "APROVADO" (deprecated), "REJEITADO" (deprecated)
   data_cadastro DateTime  @default(now())
   data_email    DateTime?
   email_enviado Boolean   @default(false)
@@ -47,15 +47,6 @@ model CodigoConvite {
   expiration     DateTime?
   atualizado_em  DateTime?
 }
-
-model Pagamento {
-  id              String    @id @default(uuid())
-  email           String
-  valor           Decimal
-  data_pagamento  DateTime
-  tipo_pagamento  String    // "mensal", "anual"
-  status          String    // "pendente", "confirmado"
-}
 ```
 
 ### Regras de Negócio
@@ -67,9 +58,12 @@ model Pagamento {
    - Padrinho deve estar ativo para seus convites funcionarem
 
 2. **Afiliado**:
-   - Status inicial: "pendente"
-   - Após aprovação: status = "aprovado", recebe código de convite
-   - Se padrinho não existir ou sem convites: status = "rejeitado"
+   - Status inicial: "PENDENTE"
+   - Status possíveis: "PENDENTE", "ENVIADO", "JA_CADASTRADO", "SEM_PADRINHO", "SEM_CONVITE"
+   - Status deprecated: "APROVADO", "REJEITADO" (mantidos para compatibilidade histórica)
+   - Após aprovação: status = "ENVIADO", recebe código de convite
+   - Se padrinho não existir: status = "SEM_PADRINHO"
+   - Se padrinho sem convites: status = "SEM_CONVITE"
    - Afiliado não pode ser padrinho de si mesmo
 
 3. **Código de Convite**:
@@ -77,9 +71,3 @@ model Pagamento {
    - Expiration configurável (default: 90 dias)
    - Código usado não pode ser reutilizado
    - Um email pode usar apenas um código
-
-4. **Pagamento**:
-   - Valores < R$50 = "mensal"
-   - Valores >= R$100 = "anual"
-   - Status inicial: "pendente" (até confirmação manual ou auto)
-   - Pagamentos vincularão a pessoa_fisica via email

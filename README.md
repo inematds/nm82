@@ -1,6 +1,6 @@
 # Sistema de Gestão de Convites e Afiliados
 
-Sistema completo para gerenciamento de convites, afiliados, pagamentos e códigos promocionais.
+Sistema completo para gerenciamento de convites, afiliados e códigos promocionais.
 
 ## Tecnologias
 
@@ -103,6 +103,16 @@ npm run dev
 ```
 
 A aplicação estará disponível em `http://localhost:3000`
+
+## Screenshots das Telas
+
+Veja exemplos visuais do sistema:
+
+![Tela do Sistema](./telas/photo_4918103494183553796_x.jpg)
+
+![Dashboard](./telas/photo_4915851694369868596_w.jpg)
+
+*Screenshots demonstrando a interface do sistema de gestão de convites e afiliados.*
 
 ## Scripts Disponíveis
 

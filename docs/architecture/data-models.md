@@ -9,10 +9,9 @@ The nm82 system models three primary user types (**Admin**, **Padrinho**, **Afil
 3. **PessoaFisica** - Profile data for all users
 4. **Afiliado** - Relationship between padrinho and afiliado
 5. **CodigoConvite** - Telegram access codes
-6. **Pagamento** - Payment records
-7. **Email** + **EmailAttachment** - Processed Gmail messages (from n8n)
-8. **Notification** - In-app notifications
-9. **AuditLog** - Security audit trail
+6. **EmailTemplate** + **ConfiguracaoEmail** + **LogEmail** - Email automation system
+7. **Notification** - In-app notifications
+8. **AuditLog** - Security audit trail
 
 ---
 
@@ -137,10 +136,10 @@ interface PessoaFisica {
 - `id`: UUID - Primary key
 - `afiliadoId`: UUID - FK to PessoaFisica (the afiliado)
 - `padrinhoId`: UUID - FK to PessoaFisica (the padrinho)
-- `status`: Enum - "PENDENTE" | "APROVADO" | "REJEITADO"
-- `motivoRejeicao`: String? - Reason if rejected
+- `status`: Enum - "PENDENTE" | "ENVIADO" | "JA_CADASTRADO" | "SEM_PADRINHO" | "SEM_CONVITE" | "APROVADO" (deprecated) | "REJEITADO" (deprecated)
+- `motivoRejeicao`: String? - Reason if rejected (deprecated)
 - `dataCadastro`: DateTime - Registration timestamp
-- `dataAprovacao`: DateTime? - Approval timestamp
+- `dataAprovacao`: DateTime? - Approval timestamp (deprecated)
 - `emailEnviado`: Boolean - Whether approval email was sent
 - `codigoConviteId`: UUID? - FK to CodigoConvite (assigned on approval)
 
@@ -149,8 +148,12 @@ interface PessoaFisica {
 ```typescript
 enum AfiliadoStatus {
   PENDENTE = "PENDENTE",
-  APROVADO = "APROVADO",
-  REJEITADO = "REJEITADO",
+  ENVIADO = "ENVIADO",
+  JA_CADASTRADO = "JA_CADASTRADO",
+  SEM_PADRINHO = "SEM_PADRINHO",
+  SEM_CONVITE = "SEM_CONVITE",
+  APROVADO = "APROVADO", // deprecated
+  REJEITADO = "REJEITADO", // deprecated
 }
 
 interface Afiliado {
@@ -158,9 +161,9 @@ interface Afiliado {
   afiliadoId: string;
   padrinhoId: string;
   status: AfiliadoStatus;
-  motivoRejeicao?: string | null;
+  motivoRejeicao?: string | null; // deprecated
   dataCadastro: Date;
-  dataAprovacao?: Date | null;
+  dataAprovacao?: Date | null; // deprecated
   emailEnviado: boolean;
   codigoConviteId?: string | null;
 
@@ -178,8 +181,11 @@ interface Afiliado {
 
 **Business Rules:**
 - `afiliadoId` != `padrinhoId` (cannot be own padrinho)
-- On approval: status → APROVADO, assign CodigoConvite, increment padrinho's `convitesUsados`
+- On approval: status → ENVIADO, assign CodigoConvite, increment padrinho's `convitesUsados`
 - Padrinho must have `convitesDisponiveis > 0` and `ativo = true`
+- If padrinho not found: status → SEM_PADRINHO
+- If padrinho has no convites: status → SEM_CONVITE
+- If email already registered: status → JA_CADASTRADO
 
 ---
 
@@ -228,130 +234,96 @@ function generateTelegramLink(codigo: string): string {
 
 ---
 
-## Pagamento
+## Email Automation System
 
-**Purpose:** Payment records for monthly/annual subscriptions
+**Purpose:** System for managing and sending automated emails for system notifications
 
-**Key Attributes:**
+The email automation system consists of three main tables:
+
+1. **EmailTemplate** - Reusable email templates with placeholders
+2. **ConfiguracaoEmail** - Email sending configuration
+3. **LogEmail** - History of all emails sent
+
+**Key Attributes (EmailTemplate)**:
 - `id`: UUID - Primary key
-- `email`: String - Payer's email
-- `valor`: Decimal - Payment amount
-- `dataPagamento`: DateTime - Payment date
-- `tipoPagamento`: Enum - "MENSAL" | "ANUAL" (calculated from valor)
-- `status`: Enum - "PENDENTE" | "CONFIRMADO" | "REJEITADO"
-- `comprovante`: String? - URL to uploaded receipt (Supabase Storage)
-- `observacoes`: String? - Admin notes
-- `confirmedBy`: UUID? - Admin user ID who confirmed
+- `nome`: String - Template name (e.g., "afiliado_aprovado")
+- `assunto`: String - Email subject with placeholders
+- `corpo`: String - Email body (HTML or plain text)
+- `variaveis`: String[] - Available placeholder variables
+- `ativo`: Boolean - Whether template is active
 - `createdAt`: DateTime
+- `updatedAt`: DateTime
 
-**TypeScript Interface:**
-
-```typescript
-enum TipoPagamento {
-  MENSAL = "MENSAL", // valor < 50
-  ANUAL = "ANUAL",   // valor >= 100
-}
-
-enum StatusPagamento {
-  PENDENTE = "PENDENTE",
-  CONFIRMADO = "CONFIRMADO",
-  REJEITADO = "REJEITADO",
-}
-
-interface Pagamento {
-  id: string;
-  email: string;
-  valor: number; // Decimal as number
-  dataPagamento: Date;
-  tipoPagamento: TipoPagamento;
-  status: StatusPagamento;
-  comprovante?: string | null;
-  observacoes?: string | null;
-  confirmedBy?: string | null;
-  createdAt: Date;
-
-  // Relations (optional - via email lookup)
-  pessoaFisica?: PessoaFisica | null;
-}
-```
-
-**Relationships:**
-- Many-to-one with PessoaFisica (via email lookup, not FK)
-
-**Business Rules:**
-- `tipoPagamento` auto-calculated: valor < R$50 = MENSAL, valor >= R$100 = ANUAL
-- Initial status: PENDENTE
-- Admins can confirm or reject with observacoes
-
----
-
-## Email & EmailAttachment
-
-**Purpose:** Processed emails from Gmail (via n8n), primarily for payment receipts
-
-**Key Attributes (Email)**:
-- `messageId`: String - Gmail message ID (PK)
-- `threadId`: String? - Gmail thread ID
-- `from`: String - Sender email
-- `to`: String - Recipient email
-- `subject`: String - Email subject
-- `bodyText`: String? - Plain text body
-- `bodyHtml`: String? - HTML body
-- `dateReceived`: DateTime - Email received timestamp
-- `labels`: String[] - Gmail labels
-- `processedAt`: DateTime - When n8n processed it
-
-**Key Attributes (EmailAttachment)**:
+**Key Attributes (ConfiguracaoEmail)**:
 - `id`: UUID - Primary key
-- `messageId`: String - FK to Email
-- `filename`: String - Original filename
-- `mimeType`: String - File MIME type
-- `size`: Int - File size in bytes
-- `storagePath`: String - Path in Supabase Storage
-- `storageUrl`: String - Public URL to file
-- `valor`: Decimal? - Extracted payment value (if applicable)
+- `chave`: String - Configuration key (unique)
+- `valor`: String - Configuration value
+- `descricao`: String? - Description
+- `updatedAt`: DateTime
+
+**Key Attributes (LogEmail)**:
+- `id`: UUID - Primary key
+- `para`: String - Recipient email
+- `assunto`: String - Email subject
+- `corpo`: String - Email body (as sent)
+- `templateId`: UUID? - FK to EmailTemplate (if used)
+- `status`: Enum - "ENVIADO" | "FALHA" | "PENDENTE"
+- `erro`: String? - Error message if failed
+- `enviadoEm`: DateTime? - When email was sent
 - `createdAt`: DateTime
 
 **TypeScript Interfaces:**
 
 ```typescript
-interface Email {
-  messageId: string;
-  threadId?: string | null;
-  from: string;
-  to: string;
-  subject: string;
-  bodyText?: string | null;
-  bodyHtml?: string | null;
-  dateReceived: Date;
-  labels: string[];
-  processedAt: Date;
-
-  // Relations
-  attachments: EmailAttachment[];
+interface EmailTemplate {
+  id: string;
+  nome: string;
+  assunto: string;
+  corpo: string;
+  variaveis: string[];
+  ativo: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-interface EmailAttachment {
+interface ConfiguracaoEmail {
   id: string;
-  messageId: string;
-  filename: string;
-  mimeType: string;
-  size: number;
-  storagePath: string;
-  storageUrl: string;
-  valor?: number | null;
+  chave: string;
+  valor: string;
+  descricao?: string | null;
+  updatedAt: Date;
+}
+
+enum StatusEmail {
+  ENVIADO = "ENVIADO",
+  FALHA = "FALHA",
+  PENDENTE = "PENDENTE",
+}
+
+interface LogEmail {
+  id: string;
+  para: string;
+  assunto: string;
+  corpo: string;
+  templateId?: string | null;
+  status: StatusEmail;
+  erro?: string | null;
+  enviadoEm?: Date | null;
   createdAt: Date;
 
   // Relations
-  email: Email;
+  template?: EmailTemplate | null;
 }
 ```
 
 **Relationships:**
-- Email has many EmailAttachments
-- EmailAttachment belongs to one Email
+- LogEmail many-to-one with EmailTemplate (optional)
 
-**Note:** These tables are primarily **read-only** in nm82 - written by n8n workflows
+**Business Rules:**
+- Templates support variable placeholders like `{{nome}}`, `{{codigo_convite}}`, etc.
+- ConfiguracaoEmail stores SMTP settings, sender info, etc.
+- All sent emails are logged in LogEmail for audit trail
+- Failed emails can be retried
 
 ---
 
@@ -376,7 +348,6 @@ enum TipoNotificacao {
   AFILIADO_APROVADO = "AFILIADO_APROVADO",
   AFILIADO_CADASTRADO = "AFILIADO_CADASTRADO",
   CONVITES_ESGOTADOS = "CONVITES_ESGOTADOS",
-  PAGAMENTO_CONFIRMADO = "PAGAMENTO_CONFIRMADO",
   CODIGO_EXPIRANDO = "CODIGO_EXPIRANDO",
 }
 
