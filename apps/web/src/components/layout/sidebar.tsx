@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronRight,
   Mail,
+  LogOut,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -41,6 +42,7 @@ const navItems: NavItem[] = [
       { title: 'Configurações Email', href: '/admin/configuracoes-email', icon: Settings },
       { title: 'Anonimização', href: '/admin', icon: Settings },
       { title: 'Página de Convite', href: '/convite', icon: Mail },
+      { title: 'Logout', href: '/api/force-logout', icon: LogOut },
     ],
   },
 ];
