@@ -51,8 +51,9 @@ WHERE user_id IN (
 );
 
 -- Depois, adicionar role ADMIN
-INSERT INTO user_roles (user_id, role, created_at)
+INSERT INTO user_roles (id, user_id, role, created_at)
 SELECT
+  gen_random_uuid()::text,
   id::text,
   'ADMIN',
   NOW()
