@@ -43,10 +43,21 @@ export default function TemplatesEmailPage() {
   async function buscarTemplates() {
     try {
       const res = await fetch("/api/admin/templates-email");
+
+      if (!res.ok) {
+        console.error("Erro HTTP:", res.status, res.statusText);
+        alert(`Erro ao buscar templates: ${res.status} ${res.statusText}`);
+        setTemplates([]);
+        return;
+      }
+
       const data = await res.json();
+      console.log("Dados recebidos da API:", data);
       setTemplates(data.templates || []);
     } catch (error) {
       console.error("Erro ao buscar templates:", error);
+      alert(`Erro: ${error}`);
+      setTemplates([]);
     } finally {
       setLoading(false);
     }
@@ -101,6 +112,26 @@ export default function TemplatesEmailPage() {
           Gerencie os templates de emails automáticos do sistema
         </p>
       </div>
+
+      {/* Mensagem quando vazio */}
+      {templates.length === 0 && (
+        <Card>
+          <CardContent className="p-8">
+            <div className="text-center">
+              <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Nenhum template encontrado
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Execute o script SQL no Supabase para criar os templates.
+              </p>
+              <Button onClick={buscarTemplates} variant="outline">
+                Recarregar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Lista de Templates */}
       <div className="grid gap-4">
