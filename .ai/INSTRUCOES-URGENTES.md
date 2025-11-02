@@ -1,6 +1,11 @@
-# ⚠️ INSTRUÇÕES URGENTES - Aplicar Antes de Testar
+# ✅ INSTRUÇÕES URGENTES - Aplicar Antes de Testar
 
-## 🚨 PROBLEMA ATUAL
+## 🔧 PROBLEMA RESOLVIDO
+
+O erro `relation "usuarios" does not exist` foi corrigido!
+As RLS policies agora referenciam a tabela correta: `user_roles`
+
+## 🚨 PRÓXIMO PASSO
 
 As páginas admin estão dando erro porque as tabelas ainda não foram criadas no banco de dados.
 

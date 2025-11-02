@@ -80,9 +80,9 @@ CREATE POLICY "Admin pode gerenciar templates"
   FOR ALL
   USING (
     EXISTS (
-      SELECT 1 FROM usuarios u
-      WHERE u.id = auth.uid()
-      AND u.role = 'ADMIN'
+      SELECT 1 FROM user_roles ur
+      WHERE ur."userId" = auth.uid()::text
+      AND ur.role = 'ADMIN'
     )
   );
 
@@ -146,9 +146,9 @@ CREATE POLICY "Admin pode gerenciar configuracoes"
   FOR ALL
   USING (
     EXISTS (
-      SELECT 1 FROM usuarios u
-      WHERE u.id = auth.uid()
-      AND u.role = 'ADMIN'
+      SELECT 1 FROM user_roles ur
+      WHERE ur."userId" = auth.uid()::text
+      AND ur.role = 'ADMIN'
     )
   );
 
@@ -452,9 +452,9 @@ CREATE POLICY "Admin pode ver logs"
   FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM usuarios u
-      WHERE u.id = auth.uid()
-      AND u.role = 'ADMIN'
+      SELECT 1 FROM user_roles ur
+      WHERE ur."userId" = auth.uid()::text
+      AND ur.role = 'ADMIN'
     )
   );
 
