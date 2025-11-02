@@ -45,7 +45,9 @@
       "Bash(git check-ignore:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git remote add:*)"
+      "Bash(git remote add:*)",
+      "Bash(git config:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

@@ -62,9 +62,12 @@ model PessoaFisica {
 }
 
 enum AfiliadoStatus {
-  PENDENTE
-  APROVADO
-  REJEITADO
+  PENDENTE          // Aguardando processamento automático
+  ENVIADO           // Aprovado e email enviado
+  JA_CADASTRADO     // Email já existe ou padrinho sem convites
+  SEM_PADRINHO      // Padrinho não encontrado
+  APROVADO          // (Deprecated - usar ENVIADO)
+  REJEITADO         // (Deprecated - usar JA_CADASTRADO ou SEM_PADRINHO)
 }
 
 model Afiliado {
@@ -219,4 +222,72 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([timestamp])
   @@map("audit_logs")
+}
+
+// ==========================================
+// EMAIL AUTOMATION SYSTEM
+// ==========================================
+
+model EmailTemplate {
+  id              String   @id @default(uuid())
+  nome            String
+  codigo          String   @unique @db.VarChar(100)
+  assunto         String   @db.Text
+  corpo           String   @db.Text
+  variaveis       Json     @default("[]")
+  remetentNome    String?  @map("remetente_nome")
+  remetenteEmail  String?  @map("remetente_email")
+  ativo           Boolean  @default(true)
+  criadoEm        DateTime @default(now()) @map("criado_em")
+  atualizadoEm    DateTime @updatedAt @map("atualizado_em")
+
+  @@index([codigo])
+  @@index([ativo])
+  @@map("email_templates")
+}
+
+model ConfiguracaoEmail {
+  id           String   @id @default(uuid())
+  chave        String   @unique @db.VarChar(100)
+  valor        String   @db.Text
+  tipo         String   @default("string") @db.VarChar(50)
+  descricao    String?  @db.Text
+  grupo        String   @default("geral") @db.VarChar(100)
+  criptografado Boolean @default(false)
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@index([chave])
+  @@index([grupo])
+  @@map("configuracoes_email")
+}
+
+enum StatusEmail {
+  PENDENTE
+  ENVIADO
+  FALHA
+}
+
+model LogEmail {
+  id                 String      @id @default(uuid())
+  templateCodigo     String?     @map("template_codigo") @db.VarChar(100)
+  destinatarioEmail  String      @map("destinatario_email")
+  destinatarioNome   String?     @map("destinatario_nome")
+  assunto            String      @db.Text
+  corpo              String      @db.Text
+  variaveis          Json?
+  status             StatusEmail @default(PENDENTE)
+  erro               String?     @db.Text
+  tentativas         Int         @default(0)
+  afiliadoId         String?     @map("afiliado_id")
+  padrinhoId         String?     @map("padrinho_id")
+  enviadoEm          DateTime?   @map("enviado_em")
+  criadoEm           DateTime    @default(now()) @map("criado_em")
+
+  @@index([status])
+  @@index([templateCodigo])
+  @@index([destinatarioEmail])
+  @@index([afiliadoId])
+  @@index([criadoEm])
+  @@map("log_emails")
 }
