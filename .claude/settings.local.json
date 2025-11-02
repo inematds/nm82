@@ -49,7 +49,8 @@
       "Bash(git config:*)",
       "Bash(git push:*)",
       "Bash(cat:*)",
-      "Bash(packages/database/prisma/migrations/EXECUTAR-TUDO.sql)"
+      "Bash(packages/database/prisma/migrations/EXECUTAR-TUDO.sql)",
+      "Bash(if exist .next rmdir /s /q .next)"
     ],
     "deny": [],
     "ask": []

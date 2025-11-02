@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session || !session.user.roles?.includes('ADMIN')) {
       return Response.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
@@ -29,7 +29,7 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session || !session.user.roles?.includes('ADMIN')) {
       return Response.json({ error: 'Não autorizado' }, { status: 401 });
     }
 

@@ -30,7 +30,7 @@ export const authOptions: NextAuthOptions = {
           const { data: rolesData, error: rolesError } = await supabaseAdmin
             .from('user_roles')
             .select('role')
-            .eq('userId', authData.user.id) // Use user ID, not email
+            .eq('user_id', authData.user.id) // Use user ID, not email
 
           if (rolesError) {
             console.error('Error fetching roles:', rolesError)
