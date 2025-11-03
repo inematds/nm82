@@ -65,7 +65,9 @@
       "Bash(DATABASE_URL=\"postgresql://postgres:r0Gb2RMLsxSQIxZF@db.lcmaaossplssflfrrank.supabase.co:5432/postgres\" npx prisma db pull:*)",
       "Bash(npx prisma format:*)",
       "Bash(timeout 5 curl:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npm run db:generate:*)",
+      "Bash(git rebase:*)"
     ],
     "deny": [],
     "ask": []
